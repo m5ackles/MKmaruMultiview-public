@@ -1,1 +1,5 @@
-# MKmaruMultiview-public
+# 멀티뷰 모니터
+
+앱 다운로드: [최신 버전 받기](../../releases/latest)
+
+설치 후 발급받은 사용 코드를 입력하세요.
