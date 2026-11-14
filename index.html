@@ -46,6 +46,10 @@
     border-radius:20px; padding:6px 12px; font-size:11.5px; font-weight:600; cursor:pointer;
   }
   #checkAllBtn:active{ border-color:var(--signal); color:var(--signal); }
+  /* 자동 크기: 정보칸 한 줄 유지 / 작아지면 그래프·영상제목·두번째 줄 숨김 */
+  #grid.fit .info .statusbar .srow{flex-wrap:nowrap; overflow:hidden; white-space:nowrap;}
+  #grid.fit.tiny .info .pulse, #grid.fit.tiny .info .videoline, #grid.fit.tiny .info .statusbar .srow + .srow{display:none;}
+  #grid.fit.tiny .info .infohead{margin-bottom:2px;}
   .info .vidOff{cursor:pointer; opacity:.6; padding:0 3px; flex-shrink:0;}
   .info .vidOff:hover{opacity:1; color:var(--signal);}
   .info .vidOff.off{opacity:1; color:var(--spike);}
@@ -245,7 +249,7 @@
             </select>
           </div>
           <div class="row">
-            <label>화면에 맞춰 자동 크기<br><span class="small">스크롤 없이 한 화면에 다 보이게 열 개수 자동 조절</span></label>
+            <label>화면에 맞춰 자동 크기<br><span class="small">열 개수는 그대로, 창 크기에 맞춰 화면들을 줄여서 가로·세로 스크롤 없이 한눈에</span></label>
             <div class="toggle" id="autoFitToggle"></div>
           </div>
           <div class="row">
@@ -747,27 +751,31 @@ function renderGrid(){
 
 $('#colSelect').addEventListener('change', ()=>{ localStorage.setItem('mvm_cols', $('#colSelect').value); renderGrid(); });
 
-// ---- 화면에 맞춰 자동 크기: 열 개수만 바꿈 (영상 다시 로딩 안 함) ----
+// ---- 화면에 맞춰 자동 크기 ----
+// 열 개수는 설정한 그대로 두고, 창(앱) 크기에 맞춰 화면 전체 폭을 줄여서
+// 16:9 비율은 유지한 채 가로·세로 모두 스크롤 없이 한눈에 들어오게 함 (영상 다시 로딩 안 함)
 let autoFit = localStorage.getItem('mvm_autofit')==='1';
 function applyAutoFit(){
-  $('#colSelect').disabled = autoFit;
-  if(!autoFit) return;
+  grid.classList.toggle('fit', autoFit);
+  if(!autoFit){ grid.classList.remove('tiny'); grid.style.maxWidth=''; grid.style.margin=''; return; }
   const stage = $('#stage');
-  const W = grid.clientWidth;
-  const H = stage.clientHeight - $('#topbar').offsetHeight - 38; // 위아래 여백
+  const W = stage.clientWidth - 28;                                   // 좌우 여백 14+14
+  const H = stage.clientHeight - 28 - $('#topbar').offsetHeight - 10; // 위아래 여백 + 상단바 + 간격
   if(W<=0 || H<=0) return;
+  const cols = parseInt($('#colSelect').value) || 2;
   const gap = 10;
-  const infoH = (grid.querySelector('.info')?.offsetHeight || 70) + 6;
-  const hasBig = channels.some(c=>c.enlarged);
   const cells = channels.reduce((n,c)=> n + (c.enlarged?4:1), 0) + 1; // +1 = "화면 추가"칸
-  let best = 5;
-  for(let c = hasBig?2:1; c<=5; c++){
-    const rows = Math.ceil(cells/c);
-    const tileW = (W - gap*(c-1))/c;
-    const totalH = rows*(tileW*9/16 + infoH) + gap*(rows-1);
-    if(totalH <= H){ best = c; break; }
+  const rows = Math.max(1, Math.ceil(cells/cols));
+  // 정보칸 높이는 폭에 따라 달라지므로 두세 번 재면서 맞춤
+  for(let pass=0; pass<4; pass++){
+    const infoH = (grid.querySelector('.info')?.offsetHeight || 70) + 6;
+    const rowH = (H - gap*(rows-1)) / rows;                   // 한 줄에 쓸 수 있는 높이
+    const tileW = Math.max(60, (rowH - infoH) * 16/9);        // 그 높이에 들어가는 영상 폭
+    const fitW = Math.min(W, tileW*cols + gap*(cols-1));      // 가로 폭을 넘지 않게
+    grid.style.maxWidth = Math.floor(fitW) + 'px';
+    grid.style.margin = '0 auto';
+    grid.classList.toggle('tiny', (fitW - gap*(cols-1))/cols < 200); // 화면이 작으면 정보칸 축소
   }
-  grid.style.setProperty('--cols', best);
 }
 const savedCols = localStorage.getItem('mvm_cols');
 if(savedCols) $('#colSelect').value = savedCols;
@@ -776,10 +784,9 @@ $('#autoFitToggle').addEventListener('click', ()=>{
   autoFit = !autoFit;
   $('#autoFitToggle').classList.toggle('on', autoFit);
   localStorage.setItem('mvm_autofit', autoFit?'1':'0');
-  if(autoFit) applyAutoFit(); else grid.style.setProperty('--cols', $('#colSelect').value);
-  $('#colSelect').disabled = autoFit;
+  applyAutoFit();
 });
-// 창 크기 / 아래 패널 접기·펴기로 화면 높이가 바뀌면 다시 맞춤
+// 창 크기 / 아래 패널 접기·펴기로 화면 크기가 바뀌면 다시 맞춤
 new ResizeObserver(()=> applyAutoFit()).observe($('#stage'));
 
 
