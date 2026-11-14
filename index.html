@@ -656,7 +656,10 @@ function infoInnerHTML(ch){
 }
 
 function bindInfoListeners(info, ch){
-  info.querySelector('.close').addEventListener('click', ()=> removeChannel(ch.id));
+  info.querySelector('.close').addEventListener('click', ()=>{
+    if(!confirm(`"${ch.channelName||ch.name}" 화면을 정말 끌까요?\n(목록에서 제거돼요)`)) return;
+    removeChannel(ch.id);
+  });
   info.querySelector('.vidOff').addEventListener('click', ()=> toggleVideo(ch));
   info.querySelector('.pulse').addEventListener('click', (e)=>{
     const pulseEl = e.currentTarget;
@@ -1229,19 +1232,24 @@ $('#exportSettingsBtn').addEventListener('click', ()=>{
 });
 
 $('#importSettingsBtn').addEventListener('click', ()=> $('#importFileInput').click());
+// 설정 백업 JSON 적용 (파일 선택 / 앱 업데이트 후 자동 복원 공용)
+function applyBackupText(text){
+  try{
+    const data = JSON.parse(text);
+    if(data.subs){ subs = data.subs; saveSubs(); renderSubs(); }
+    if(data.terms){ searchTerms = data.terms; saveTerms(); renderTerms(); }
+    if(data.presets){ savePresets(data.presets); renderPresets(); }
+    log('설정 파일에서 복원 완료');
+    return true;
+  }catch(err){ log('설정 파일을 읽을 수 없음 (형식 오류)', true); return false; }
+}
+window.applyBackupText = applyBackupText;
+
 $('#importFileInput').addEventListener('change', e=>{
   const file = e.target.files[0];
   if(!file) return;
   const reader = new FileReader();
-  reader.onload = ()=>{
-    try{
-      const data = JSON.parse(reader.result);
-      if(data.subs){ subs = data.subs; saveSubs(); renderSubs(); }
-      if(data.terms){ searchTerms = data.terms; saveTerms(); renderTerms(); }
-      if(data.presets){ savePresets(data.presets); renderPresets(); }
-      log('설정 파일에서 복원 완료');
-    }catch(err){ log('설정 파일을 읽을 수 없음 (형식 오류)', true); }
-  };
+  reader.onload = ()=> applyBackupText(reader.result);
   reader.readAsText(file);
   e.target.value = '';
 });
