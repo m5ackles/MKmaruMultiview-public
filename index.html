@@ -67,6 +67,11 @@
     padding:18px 44px 8px 10px; font-size:12px; line-height:1.4; color:#fff;
     background:linear-gradient(transparent, rgba(0,0,0,.78) 40%); text-shadow:0 1px 2px #000;}
   .cell.enlarged .chatPeek.on{display:block;}
+  /* 채팅만 보기: 영상은 흐리게(알아볼 정도만), 채팅은 화면 전체에 */
+  .tile.chatOnly .vwrap{filter:blur(8px) brightness(.45) saturate(.6); transform:scale(1.08); pointer-events:none;}
+  .tile.chatOnly .chatPeek{display:flex; flex-direction:column; justify-content:flex-end; top:0;
+    padding:6px 42px 8px 8px; font-size:11.5px; background:rgba(0,0,0,.25);}
+  .tile.chatOnly .chatPeek .wait{color:#aab3bd; font-size:11px;}
   .chatPeek div{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .chatPeek .a{color:#9fc2e7; font-weight:600; margin-right:5px;}
   .chatPeek .hit{color:#d8c8ff;}
@@ -317,6 +322,18 @@
               <option value="3">3줄</option>
               <option value="4">4줄</option>
               <option value="5">5줄</option>
+            </select>
+          </div>
+          <div class="row">
+            <label>채팅만 보기 줄 수<br><span class="small">각 화면 📌 옆 말풍선 버튼 — 영상은 흐리게, 소리 끔, 작은 화면에도 표시</span></label>
+            <select id="chatOnlyLinesSelect">
+              <option value="3">3줄</option>
+              <option value="4">4줄</option>
+              <option value="5">5줄</option>
+              <option value="6">6줄</option>
+              <option value="8">8줄</option>
+              <option value="10">10줄</option>
+              <option value="12">12줄</option>
             </select>
           </div>
           <div class="row">
@@ -610,6 +627,7 @@ const ICON = {
   pin:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"><path d="M9 3h6l-1 6 4 4H6l4-4z"/><path d="M12 13v8"/></svg>',
   pinOn:'<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"><path d="M9 3h6l-1 6 4 4H6l4-4z" fill="currentColor"/><path d="M12 13v8" fill="none"/></svg>',
   sound:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path d="M16.5 9a4 4 0 0 1 0 6"/><path d="M19 6.5a8 8 0 0 1 0 11"/></svg>',
+  chat:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M4 5h16v11H10l-5 4v-4H4z"/><path d="M8 9h8M8 12h5"/></svg>',
   note:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4"/><path d="M9 12h6M9 16h6"/></svg>',
   noteOff:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4"/><path d="M3 3l18 18"/></svg>',
   mute:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path d="M16 9.5l5 5M21 9.5l-5 5"/></svg>'
@@ -620,7 +638,7 @@ const msgText = m => !m ? '' : (m.simpleText ?? (m.runs||[]).map(r=> r.text ?? (
 
 // ---- 소리 화면 고르기: 고른 화면이 있으면 그것만, 없으면 확대 화면만 소리 (영상 다시 로딩 없이) ----
 let soundId = null;
-const isAudible = ch => soundId ? ch.id===soundId : !!ch.enlarged;
+const isAudible = ch => !ch.chatOnly && (soundId ? ch.id===soundId : !!ch.enlarged);
 // 영상이 막 로딩된 직후엔 명령을 못 받으므로 몇 번 나눠서 소리 켜기/끄기 명령 보냄
 function kickAudio(){ [800, 2000, 4000].forEach(ms=> setTimeout(applyAudio, ms)); }
 function applyAudio(){
@@ -682,9 +700,19 @@ grid.addEventListener('pointerdown', e=>{
 // ---- 확대 화면 채팅 미리보기 ----
 let chatPeekOn = localStorage.getItem('mvm_chatpeek')!=='0';
 let peekLines = Math.min(5, Math.max(2, parseInt(localStorage.getItem('mvm_peeklines')) || 4));
+let chatOnlyLines = Math.min(12, Math.max(3, parseInt(localStorage.getItem('mvm_chatonlylines')) || 6));
 function chatPeekHTML(ch){
-  return (ch.recentChat||[]).slice(-peekLines).map(m=>
+  const lines = (ch.recentChat||[]).slice(-(ch.chatOnly ? chatOnlyLines : peekLines)).map(m=>
     `<div class="${m.hit?'hit':''}"><span class="a">${esc(m.a)}</span>${esc(m.m)}</div>`).join('');
+  if(!lines && ch.chatOnly) return `<div class="wait">${ch.liveChatId ? '채팅 기다리는 중…' : '채팅 연결 중… (채팅이 꺼진 방송일 수 있어요)'}</div>`;
+  return lines;
+}
+// 채팅만 보기 켜기/끄기 — 영상은 다시 로딩하지 않고 흐림 처리만, 소리는 끔
+function toggleChatOnly(ch){
+  ch.chatOnly = !ch.chatOnly;
+  const t = grid.querySelector(`.tile[data-id="${ch.id}"]`);
+  if(t) t.classList.toggle('chatOnly', !!ch.chatOnly);
+  applyAudio(); updateChatPeeks(); updateInfoPanels();
 }
 function updateChatPeeks(){
   channels.forEach(ch=>{
@@ -805,6 +833,12 @@ $('#exportRecordsBtn').addEventListener('click', exportRecords);
 setInterval(saveRecords, 15000);
 
 // ---- 설정 토글: 채팅 미리보기 / 알림 / 백그라운드 감시 ----
+$('#chatOnlyLinesSelect').value = String(chatOnlyLines);
+$('#chatOnlyLinesSelect').addEventListener('change', e=>{
+  chatOnlyLines = parseInt(e.target.value) || 6;
+  localStorage.setItem('mvm_chatonlylines', String(chatOnlyLines));
+  updateChatPeeks();
+});
 $('#peekLinesSelect').value = String(peekLines);
 $('#peekLinesSelect').addEventListener('change', e=>{
   peekLines = parseInt(e.target.value) || 4;
@@ -1031,6 +1065,7 @@ function infoInnerHTML(ch){
         <div class="videoline">${esc(ch.name)}</div>
       </div>
       <span class="ibtn pinBtn${ch.pinned?' on':''}" title="${ch.pinned?'고정 풀기':'맨 앞에 고정'}">${ch.pinned?ICON.pinOn:ICON.pin}</span>
+      <span class="ibtn chatOnlyBtn${ch.chatOnly?' on':''}" title="${ch.chatOnly?'채팅만 보기 끄기':'채팅만 보기 (영상 흐리게 · 소리 끔)'}">${ICON.chat}</span>
       <span class="ibtn peekBtn${ch.peekOff?' off':''}" title="${ch.peekOff?'채팅 미리보기 켜기 (확대 시)':'채팅 미리보기 끄기 (확대 시)'}">${ch.peekOff?ICON.noteOff:ICON.note}</span>
       <span class="ibtn soundBtn${soundId===ch.id?' on':''}" title="${soundId===ch.id?'소리 끄기':'이 화면 소리 듣기'}">${isAudible(ch)?ICON.sound:ICON.mute}</span>
       <span class="ibtn vidOff${ch.videoOff?' on':''}" title="${ch.videoOff?'화면 켜기':'화면 끄기'}">${ch.videoOff?ICON.play:ICON.power}</span>
@@ -1051,6 +1086,7 @@ function bindInfoListeners(info, ch){
     removeChannel(ch.id);
   });
   info.querySelector('.vidOff').addEventListener('click', ()=> toggleVideo(ch));
+  info.querySelector('.chatOnlyBtn').addEventListener('click', ()=> toggleChatOnly(ch));
   info.querySelector('.peekBtn').addEventListener('click', ()=>{ ch.peekOff = !ch.peekOff; updateChatPeeks(); updateInfoPanels(); });
   info.querySelector('.pinBtn').addEventListener('click', ()=>{ ch.pinned = !ch.pinned; renderGrid(); });
   info.querySelector('.soundBtn').addEventListener('click', ()=>{ soundId = (soundId===ch.id) ? null : ch.id; applyAudio(); updateInfoPanels(); });
@@ -1104,7 +1140,7 @@ function renderGrid(){
     cell.className = 'cell' + (ch.enlarged?' enlarged':'');
 
     const tile = document.createElement('div');
-    tile.className = 'tile' + (ch.hot?' hot':'');
+    tile.className = 'tile' + (ch.hot?' hot':'') + (ch.chatOnly?' chatOnly':'');
     tile.dataset.id = ch.id;
     tile.innerHTML = `
       <div class="vwrap" style="width:100%;height:100%;">${videoAreaHTML(ch)}</div>
