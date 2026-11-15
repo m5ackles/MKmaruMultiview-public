@@ -167,6 +167,9 @@
     border-bottom:2px solid transparent;
   }
   .tabBtn.active{ color:var(--text); border-bottom-color:var(--signal); }
+  #collapseBtn{ width:38px; flex-shrink:0; background:transparent; border:none; color:var(--muted); border-radius:0; font-size:14px;}
+  #bottomPanel.collapsed{ height:auto !important; }
+  #bottomPanel.collapsed #panelBody{ display:none; }
   #panelBody{ flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; min-height:0; }
   #bottomPanel.collapsed #panelBody{ display:none; }
   .tabPane{ display:none; flex-direction:column; height:100%; }
@@ -224,6 +227,7 @@
     <div id="tabBar">
       <button class="tabBtn active" data-tab="live">현재방송</button>
       <button class="tabBtn" data-tab="settings">설정</button>
+      <button id="collapseBtn" title="아래 패널 접기/펴기">▾</button>
     </div>
     <div id="panelBody">
       <div class="tabPane active" id="tabLive">
@@ -855,7 +859,7 @@ function makeResizer(handle, getH, setH, key){
     const up = ()=>{
       handle.classList.remove('active');
       localStorage.setItem(key, String(getH()));
-      localStorage.setItem('mvm_panelH', String($('#bottomPanel').offsetHeight));
+      if(!isCollapsed()) localStorage.setItem('mvm_panelH', String($('#bottomPanel').offsetHeight));
       localStorage.setItem('mvm_logH', String($('#log').offsetHeight));
       handle.removeEventListener('pointermove', move); handle.removeEventListener('pointerup', up); handle.removeEventListener('pointercancel', up);
     };
@@ -864,6 +868,17 @@ function makeResizer(handle, getH, setH, key){
     handle.addEventListener('pointercancel', up);
   });
 }
+// ▾ 버튼: 한 번에 맨 아래로 접기 (탭 제목만 보임) / ▴ 다시 누르면 원래 높이로
+const isCollapsed = ()=> $('#bottomPanel').classList.contains('collapsed');
+function setCollapsed(on){
+  $('#bottomPanel').classList.toggle('collapsed', on);
+  $('#collapseBtn').textContent = on ? '▴' : '▾';
+  localStorage.setItem('mvm_panelCollapsed', on ? '1' : '0');
+  if(!on){ setPanelH(parseInt(localStorage.getItem('mvm_panelH')) || Math.round(window.innerHeight*0.46)); setLogH($('#log').offsetHeight); }
+}
+$('#collapseBtn').addEventListener('click', ()=> setCollapsed(!isCollapsed()));
+// 접힌 상태에서 막대를 끌면 펴지면서 바로 끌기 (끌기 기능은 그대로)
+$('#panelHandle').addEventListener('pointerdown', ()=>{ if(isCollapsed()) setCollapsed(false); }, true);
 makeResizer($('#panelHandle'), ()=> $('#bottomPanel').offsetHeight, h=>{ setPanelH(h); setLogH($('#log').offsetHeight); }, 'mvm_panelH');
 makeResizer($('#logHandle'), ()=> $('#log').offsetHeight, setLogHPush, 'mvm_logH');
 function restoreHeights(){
@@ -871,8 +886,9 @@ function restoreHeights(){
   setPanelH(ph || Math.round(window.innerHeight*0.46));
   const lh = parseInt(localStorage.getItem('mvm_logH'));
   setLogH(lh || 180);
+  if(localStorage.getItem('mvm_panelCollapsed')==='1') setCollapsed(true);
 }
-window.addEventListener('resize', ()=>{ setPanelH($('#bottomPanel').offsetHeight); setLogH($('#log').offsetHeight); });
+window.addEventListener('resize', ()=>{ if(isCollapsed()) return; setPanelH($('#bottomPanel').offsetHeight); setLogH($('#log').offsetHeight); });
 
 // ---- broadcast-safe mode (substitute image instead of live video) ----
 let broadcastMode = false;
@@ -941,6 +957,7 @@ document.querySelectorAll('.tabBtn').forEach(btn=>{
     document.querySelectorAll('.tabPane').forEach(p=>p.classList.remove('active'));
     btn.classList.add('active');
     $('#tab'+btn.dataset.tab[0].toUpperCase()+btn.dataset.tab.slice(1)).classList.add('active');
+    if(typeof setCollapsed==='function' && $('#bottomPanel').classList.contains('collapsed')) setCollapsed(false);
   });
 });
 
