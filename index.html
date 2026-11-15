@@ -175,6 +175,31 @@
     border-bottom:2px solid transparent;
   }
   .tabBtn.active{ color:var(--text); border-bottom-color:var(--signal); }
+  /* ---- 채팅 탭 ---- */
+  .tabBtn .badge{display:inline-block; min-width:16px; padding:0 4px; margin-left:3px; border-radius:8px; background:var(--danger); color:#fff; font-size:10px; line-height:16px; vertical-align:1px;}
+  .tabBtn .badge:empty{display:none;}
+  #tabChat .chatTop{display:flex; align-items:center; gap:10px; padding:8px 14px; border-bottom:1px solid var(--line); flex-shrink:0; flex-wrap:wrap;}
+  #tabChat .chatTop .lbl{font-size:12px;}
+  #tabChat .chatTop .small{margin-left:auto;}
+  #termBox{flex-shrink:0; height:96px; max-height:none; overflow:auto; padding:8px 14px; gap:5px;}
+  #termBox .empty{font-size:11.5px; color:var(--muted);}
+  .term .tType{flex:0 0 auto; font-size:10px; color:var(--muted); border:1px solid var(--line); border-radius:4px; padding:0 5px; margin-right:2px;}
+  .term .tText{flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:600;}
+  .term .tCnt{flex:0 0 auto; font-size:10.5px; color:var(--muted);}
+  .term label.bell{flex:0 0 auto; display:flex; align-items:center; gap:3px; font-size:11px; color:var(--muted); cursor:pointer;}
+  .term label.bell input{accent-color:var(--signal); margin:0;}
+  #chatFeed{flex:1; min-height:60px; overflow:auto; padding:8px 14px; display:flex; flex-direction:column; gap:6px;}
+  #chatFeed .feedEmpty{margin:auto 0 0; font-size:11.5px; color:var(--muted); text-align:center; padding:10px;}
+  #chatFeed .fItem{flex-shrink:0; background:var(--panel2); border:1px solid var(--line); border-left:3px solid var(--c); border-radius:6px; padding:5px 8px; font-size:12.5px;}
+  #chatFeed .fHead{display:flex; align-items:center; gap:6px; font-size:11px; color:var(--muted); min-width:0;}
+  #chatFeed .fCh{color:var(--c); font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:45%;}
+  #chatFeed .fUser{color:var(--text); font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  #chatFeed .fTerm{margin-left:auto; flex-shrink:0; font-size:10px; border:1px solid var(--line); border-radius:4px; padding:0 4px;}
+  #chatFeed .fGo{flex-shrink:0; color:var(--muted); text-decoration:none; padding:0 2px;}
+  #chatFeed .fMsg{margin-top:2px; line-height:1.45; word-break:break-all;}
+  #chatFeed mark{background:rgba(167,139,250,.38); color:#fff; border-radius:2px; padding:0 1px;}
+  #tabChat .chatForm{display:flex; gap:6px; padding:8px 14px; border-top:1px solid var(--line); flex-shrink:0;}
+  #tabChat .chatForm input{flex:1; min-width:0;}
   #collapseBtn{ width:38px; flex-shrink:0; background:transparent; border:none; color:var(--muted); border-radius:0; font-size:14px;}
   #bottomPanel.collapsed{ height:auto !important; }
   #bottomPanel.collapsed #panelBody{ display:none; }
@@ -234,6 +259,7 @@
     <div class="dragHandle" id="panelHandle" title="끌어서 영상/아래 패널 높이 조절"></div>
     <div id="tabBar">
       <button class="tabBtn active" data-tab="live">현재방송</button>
+      <button class="tabBtn" data-tab="chat">채팅<span class="badge" id="chatBadge"></span></button>
       <button class="tabBtn" data-tab="settings">설정</button>
       <button id="collapseBtn" title="아래 패널 접기/펴기">▾</button>
     </div>
@@ -251,6 +277,26 @@
           </h3>
         </div>
         <div id="log"></div>
+      </div>
+
+      <div class="tabPane" id="tabChat">
+        <div class="chatTop">
+          <div class="toggle" id="chatNotifyToggle"></div><span class="lbl">검색 알림 받기</span>
+          <span class="small" id="chatStat"></span>
+          <button class="ghost" id="clearFeedBtn" style="padding:3px 8px; font-size:11px;">결과 지우기</button>
+        </div>
+        <div class="presetlist" id="termBox"></div>
+        <div class="dragHandle" id="termHandle" title="끌어서 검색어 목록 / 결과 높이 조절"></div>
+        <div id="chatFeed"><div class="feedEmpty">아래에 닉네임이나 단어를 추가하면, 모든 방송 채팅에서 찾은 내용이 여기에 쌓여요.</div></div>
+        <div class="chatForm">
+          <select id="termType" title="어디에서 찾을지">
+            <option value="all">닉네임+내용</option>
+            <option value="user">닉네임</option>
+            <option value="msg">내용</option>
+          </select>
+          <input type="text" id="termInput" placeholder="찾을 닉네임 또는 단어">
+          <button class="primary" id="termAddBtn">추가</button>
+        </div>
       </div>
 
       <div class="tabPane" id="tabSettings">
@@ -295,21 +341,6 @@
             <input type="text" id="chatPollInput" value="10" style="width:50px">
           </div>
           <div class="small">API 키 없이 유튜브 페이지를 직접 읽어서 할당량 제한이 없어요. 다만 너무 짧게(5초 미만) 하면 유튜브가 잠시 요청을 막을 수 있어요.</div>
-        </div>
-
-        <div class="sec">
-          <h3>키워드 / 사용자 알림 <span class="small">(채팅에 나오면 화면 반짝 + 로그 + 알림)</span></h3>
-          <div class="row">
-            <input type="text" id="kwInput" placeholder="키워드 (예: 속보, 경찰)" style="flex:1">
-            <button id="addKwBtn">추가</button>
-          </div>
-          <div class="presetlist" id="kwList"></div>
-          <div class="row" style="margin-top:8px;">
-            <input type="text" id="userInput" placeholder="채팅 닉네임 (예: @홍길동)" style="flex:1">
-            <button id="addUserBtn">추가</button>
-          </div>
-          <div class="presetlist" id="userList"></div>
-          <div class="small">로그의 밑줄 친 줄을 누르면 그 순간 근처부터 방송을 볼 수 있어요.</div>
         </div>
 
         <div class="sec">
@@ -736,56 +767,128 @@ function momentUrl(ch, t){
   return `https://www.youtube.com/watch?v=${ch.videoId}&t=${off}s`;
 }
 
-// ---- 키워드 / 사용자 알림 ----
-let kwList = JSON.parse(localStorage.getItem('mvm_kw')||'[]');
-let userList = JSON.parse(localStorage.getItem('mvm_alertusers')||'[]');
-function saveAlertLists(){
-  localStorage.setItem('mvm_kw', JSON.stringify(kwList));
-  localStorage.setItem('mvm_alertusers', JSON.stringify(userList));
-  renderAlertLists();
+// ---- 채팅 탭: 닉네임 / 내용 검색 (모든 방송 채팅에서 찾아서 쌓기 + 알림) ----
+// 검색어: {t:'단어', type:'all'|'user'|'msg', alarm:true/false, n:찾은 횟수}
+let chatTerms = JSON.parse(localStorage.getItem('mvm_chatterms')||'null');
+if(!Array.isArray(chatTerms)){   // 예전 설정 탭의 키워드/닉네임을 그대로 옮겨옴
+  chatTerms = [];
+  JSON.parse(localStorage.getItem('mvm_kw')||'[]').forEach(t=> chatTerms.push({t, type:'msg', alarm:true}));
+  JSON.parse(localStorage.getItem('mvm_alertusers')||'[]').forEach(t=> chatTerms.push({t, type:'user', alarm:true}));
 }
-function renderAlertLists(){
-  [['#kwList', kwList, '키워드'], ['#userList', userList, '닉네임']].forEach(([sel, arr, label])=>{
-    const box = $(sel); if(!box) return;
-    box.innerHTML = '';
-    arr.forEach(v=>{
-      const row = document.createElement('div'); row.className = 'preset';
-      const sp = document.createElement('span'); sp.textContent = (label==='닉네임'?'👤 ':'🔑 ') + v;
-      const b = document.createElement('button'); b.textContent = '✕';
-      b.addEventListener('click', ()=>{
-        if(!confirm(`${label} "${v}" 를 삭제할까요?`)) return;
-        const i = arr.indexOf(v); if(i>=0) arr.splice(i,1); saveAlertLists();
-      });
-      row.append(sp, b); box.appendChild(row);
+let chatNotifyOn = localStorage.getItem('mvm_chatnotify')!=='0';
+const TYPE_LABEL = {all:'닉네임+내용', user:'닉네임', msg:'내용'};
+const FEED_MAX = 500;
+let feedCount = 0, unread = 0;
+
+function saveChatTerms(){
+  localStorage.setItem('mvm_chatterms', JSON.stringify(chatTerms.map(({t,type,alarm})=>({t,type,alarm}))));
+  renderChatTerms();
+}
+function renderChatTerms(){
+  const box = $('#termBox'); box.innerHTML = '';
+  if(!chatTerms.length){ box.innerHTML = '<div class="empty">등록된 검색어가 없어요. 맨 아래에서 추가하세요.</div>'; }
+  chatTerms.forEach(term=>{
+    const row = document.createElement('div'); row.className = 'preset term';
+    const ty = document.createElement('span'); ty.className='tType'; ty.textContent = TYPE_LABEL[term.type]||'닉네임+내용';
+    const tx = document.createElement('span'); tx.className='tText'; tx.textContent = term.t;
+    const cn = document.createElement('span'); cn.className='tCnt'; cn.textContent = term.n ? term.n+'건' : '';
+    const bell = document.createElement('label'); bell.className='bell'; bell.title='이 검색어가 나오면 알림 받기';
+    const cb = document.createElement('input'); cb.type='checkbox'; cb.checked = !!term.alarm;
+    cb.addEventListener('change', ()=>{ term.alarm = cb.checked; saveChatTerms(); });
+    bell.append(cb, document.createTextNode('알림'));
+    const x = document.createElement('button'); x.textContent='✕';
+    x.addEventListener('click', ()=>{
+      if(!confirm(`검색어 "${term.t}" (${TYPE_LABEL[term.type]}) 를 삭제할까요?`)) return;
+      chatTerms = chatTerms.filter(v=>v!==term); saveChatTerms();
     });
+    row.append(ty, tx, cn, bell, x); box.appendChild(row);
   });
+  $('#chatStat').textContent = `검색어 ${chatTerms.length}개 · 결과 ${feedCount}건`;
 }
-function addAlertItem(arr, input){
-  const v = $(input).value.trim();
-  if(!v || arr.includes(v)) return;
-  arr.push(v); saveAlertLists(); $(input).value='';
+function addChatTerm(){
+  const t = $('#termInput').value.trim(); const type = $('#termType').value;
+  if(!t) return;
+  if(chatTerms.some(v=> v.t.toLowerCase()===t.toLowerCase() && v.type===type)){ $('#termInput').value=''; return; }
+  const term = {t, type, alarm:true};
+  chatTerms.push(term); saveChatTerms(); $('#termInput').value='';
+  // 방금 추가한 검색어로 지금까지 받아둔 최근 채팅도 훑어서 보여줌 (알림은 안 보냄)
+  channels.forEach(ch=> (ch.recentChat||[]).forEach(m=>{
+    if(termMatch(term, (m.a||'').replace(/^@/,'').toLowerCase(), (m.m||'').toLowerCase())) addFeedItem(ch, m, term, Date.now(), momentUrl(ch, Date.now()));
+  }));
 }
-$('#addKwBtn').addEventListener('click', ()=> addAlertItem(kwList, '#kwInput'));
-$('#kwInput').addEventListener('keydown', e=>{ if(e.key==='Enter') addAlertItem(kwList, '#kwInput'); });
-$('#addUserBtn').addEventListener('click', ()=> addAlertItem(userList, '#userInput'));
-$('#userInput').addEventListener('keydown', e=>{ if(e.key==='Enter') addAlertItem(userList, '#userInput'); });
+$('#termAddBtn').addEventListener('click', addChatTerm);
+$('#termInput').addEventListener('keydown', e=>{ if(e.key==='Enter') addChatTerm(); });
+
+function termMatch(term, author, text){
+  const q = term.t.toLowerCase(), qu = q.replace(/^@/,'');
+  const u = qu && (qu.length>=2 ? author.includes(qu) : author===qu);
+  const c = q && text.includes(q);
+  return term.type==='user' ? u : term.type==='msg' ? c : (u || c);
+}
+// 채널마다 고정 색 (이름으로 색 정함)
+function chColor(name){ let h=0; for(const c of String(name)) h=(h*31 + c.charCodeAt(0))%360; return `hsl(${h},65%,62%)`; }
+function highlight(text, q){
+  const t = esc(text); if(!q) return t;
+  const re = new RegExp(esc(q).replace(/[.*+?^${}()|[\]\\]/g,'\\$&'), 'gi');
+  return t.replace(re, x=>`<mark>${x}</mark>`);
+}
+function addFeedItem(ch, m, term, t, url){
+  const feed = $('#chatFeed');
+  feed.querySelector('.feedEmpty')?.remove();
+  const atBottom = feed.scrollHeight - feed.scrollTop - feed.clientHeight < 40;
+  const name = ch.channelName || ch.name;
+  const time = new Date(t).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
+  const q = term.t.replace(/^@/,'');
+  const d = document.createElement('div'); d.className='fItem'; d.style.setProperty('--c', chColor(name));
+  d.innerHTML = `<div class="fHead"><span class="mono">${time}</span><span class="fCh">${esc(name)}</span>`
+    + `<span class="fUser">${term.type==='msg' ? esc(m.a) : highlight(m.a, q)}</span>`
+    + `<span class="fTerm">${esc(term.t)}</span><a class="fGo" href="${esc(url)}" target="_blank" rel="noopener" title="그 순간 방송 보기">▶</a></div>`
+    + `<div class="fMsg">${term.type==='user' ? esc(m.m) : highlight(m.m, term.t)}</div>`;
+  feed.appendChild(d);   // 채팅처럼 아래에 쌓임
+  while(feed.children.length > FEED_MAX) feed.firstElementChild.remove();
+  if(atBottom) feed.scrollTop = feed.scrollHeight;
+  feedCount++; term.n = (term.n||0)+1;
+  if(!$('#tabChat').classList.contains('active')){ unread++; $('#chatBadge').textContent = unread>99?'99+':unread; }
+  renderChatTerms();
+}
+$('#clearFeedBtn').addEventListener('click', ()=>{
+  if(!confirm('검색 결과를 모두 지울까요? (검색어는 그대로 남아요)')) return;
+  $('#chatFeed').innerHTML = '<div class="feedEmpty">검색 결과를 지웠어요.</div>';
+  feedCount = 0; chatTerms.forEach(t=> t.n=0); renderChatTerms();
+});
+$('#chatNotifyToggle').classList.toggle('on', chatNotifyOn);
+$('#chatNotifyToggle').addEventListener('click', ()=>{
+  chatNotifyOn = !chatNotifyOn; $('#chatNotifyToggle').classList.toggle('on', chatNotifyOn);
+  localStorage.setItem('mvm_chatnotify', chatNotifyOn?'1':'0');
+  if(chatNotifyOn){
+    if(Native.has) NativeBridge.postMessage(JSON.stringify({type:'notifyPerm'}));
+    else if('Notification' in window && Notification.permission==='default') Notification.requestPermission();
+  }
+});
+// 채팅 탭을 열면 안 읽은 수 지우고 맨 아래로
+document.querySelector('.tabBtn[data-tab=chat]').addEventListener('click', ()=>{
+  unread = 0; $('#chatBadge').textContent = '';
+  const f = $('#chatFeed'); setTimeout(()=>{ f.scrollTop = f.scrollHeight; }, 0);
+});
 
 function checkAlerts(ch, msgs){
-  if(!kwList.length && !userList.length) return;
+  if(!chatTerms.length) return;
   const name = ch.channelName || ch.name;
   msgs.forEach(m=>{
     const text = (m.m||'').toLowerCase();
     const author = (m.a||'').replace(/^@/,'').toLowerCase();
-    const kw = kwList.find(k=> k && text.includes(k.toLowerCase()));
-    const us = userList.find(u=>{ const x = u.replace(/^@/,'').toLowerCase(); return x && (author===x || (x.length>=3 && author.includes(x))); });
-    if(!kw && !us) return;
+    const hits = chatTerms.filter(t=> termMatch(t, author, text));
+    if(!hits.length) return;
     m.hit = true;
-    const now = Date.now();
-    const what = us ? `사용자 ${m.a}` : `키워드 "${kw}"`;
-    const rec = getRec(ch); rec.kw = (rec.kw||0) + 1; recDirty = true;
-    log(`${name} — ${what} · ${m.a}: ${(m.m||'').slice(0,80)}`, 'kw', momentUrl(ch, now));
+    const now = Date.now(), url = momentUrl(ch, now);
+    addFeedItem(ch, m, hits[0], now, url);
     flashTile(ch);
-    notify(`${us?'👤':'🔑'} ${what} · ${name}`, `${m.a}: ${(m.m||'').slice(0,100)}`, (us?'u:':'k:')+ch.id+':'+(us||kw), 20000);
+    const rec = getRec(ch); rec.kw = (rec.kw||0) + 1; recDirty = true;
+    const al = hits.find(t=> t.alarm);
+    if(al){
+      log(`${name} — "${al.t}" · ${m.a}: ${(m.m||'').slice(0,80)}`, 'kw', url);
+      if(chatNotifyOn) notify(`💬 ${al.t} · ${name}`, `${m.a}: ${(m.m||'').slice(0,100)}`, 's:'+ch.id+':'+al.t, 20000, true);
+    }
   });
 }
 function flashTile(ch){
@@ -798,8 +901,8 @@ function flashTile(ch){
 // ---- 알림 (앱: 폰 상단 알림 / PC: 바탕화면 알림) ----
 let notifyOn = localStorage.getItem('mvm_notify')==='1';
 const lastNotify = {};
-function notify(title, text, key, gapMs=60000){
-  if(!notifyOn) return;
+function notify(title, text, key, gapMs=60000, fromChatTab=false){
+  if(!fromChatTab && !notifyOn) return;
   const now = Date.now();
   if(lastNotify[key] && now - lastNotify[key] < gapMs) return;   // 같은 알림은 일정 시간 한 번만
   lastNotify[key] = now;
@@ -917,13 +1020,14 @@ function setLogHPush(h){
   if(over > 0) setPanelH($('#bottomPanel').offsetHeight + over);
   return setLogH(h);
 }
-function makeResizer(handle, getH, setH, key){
+// dir: -1 = 위로 끌면 커짐(손잡이 아래쪽 칸), +1 = 아래로 끌면 커짐(손잡이 위쪽 칸)
+function makeResizer(handle, getH, setH, key, dir=-1){
   handle.addEventListener('pointerdown', e=>{
     e.preventDefault();
     const sy = e.clientY, sh = getH();
     handle.classList.add('active');
     try{ handle.setPointerCapture(e.pointerId); }catch(_){}
-    const move = ev=>{ ev.preventDefault(); setH(sh - (ev.clientY - sy)); };   // 위로 끌면 아래쪽이 커짐
+    const move = ev=>{ ev.preventDefault(); setH(sh + dir*(ev.clientY - sy)); };
     const up = ()=>{
       handle.classList.remove('active');
       localStorage.setItem(key, String(getH()));
@@ -948,12 +1052,26 @@ $('#collapseBtn').addEventListener('click', ()=> setCollapsed(!isCollapsed()));
 // 접힌 상태에서 막대를 끌면 펴지면서 바로 끌기 (끌기 기능은 그대로)
 $('#panelHandle').addEventListener('pointerdown', ()=>{ if(isCollapsed()) setCollapsed(false); }, true);
 makeResizer($('#panelHandle'), ()=> $('#bottomPanel').offsetHeight, h=>{ setPanelH(h); setLogH($('#log').offsetHeight); }, 'mvm_panelH');
+const MIN_TERMS_H = 56;   // 검색어 목록 최소 (2줄)
+const MIN_FEED_H = 70;    // 결과 최소
+function setTermsH(h){
+  const body = $('#panelBody').clientHeight;
+  const fixed = $('#tabChat .chatTop').offsetHeight + $('#termHandle').offsetHeight + $('#tabChat .chatForm').offsetHeight;
+  const mx = Math.max(MIN_TERMS_H, body - fixed - MIN_FEED_H);
+  h = Math.round(Math.min(mx, Math.max(MIN_TERMS_H, h)));
+  $('#termBox').style.height = h + 'px';
+  return h;
+}
+// 막대를 아래로 끌면 검색어 목록이 커지고 결과가 작아짐
+makeResizer($('#termHandle'), ()=> $('#termBox').offsetHeight, setTermsH, 'mvm_termsH', +1);
 makeResizer($('#logHandle'), ()=> $('#log').offsetHeight, setLogHPush, 'mvm_logH');
 function restoreHeights(){
   const ph = parseInt(localStorage.getItem('mvm_panelH'));
   setPanelH(ph || Math.round(window.innerHeight*0.46));
   const lh = parseInt(localStorage.getItem('mvm_logH'));
   setLogH(lh || 180);
+  const th = parseInt(localStorage.getItem('mvm_termsH'));
+  $('#termBox').style.height = (th || 96) + 'px';
   if(localStorage.getItem('mvm_panelCollapsed')==='1') setCollapsed(true);
 }
 window.addEventListener('resize', ()=>{ if(isCollapsed()) return; setPanelH($('#bottomPanel').offsetHeight); setLogH($('#log').offsetHeight); });
@@ -1714,8 +1832,7 @@ $('#exportSettingsBtn').addEventListener('click', ()=>{
     subs: JSON.parse(localStorage.getItem('mvm_subs')||'[]'),
     terms: JSON.parse(localStorage.getItem('mvm_terms')||'[]'),
     presets: JSON.parse(localStorage.getItem('mvm_presets')||'{}'),
-    keywords: kwList,
-    alertUsers: userList
+    chatTerms: chatTerms.map(({t,type,alarm})=>({t,type,alarm}))
   };
   saveTextFile(`multiview-settings-${Date.now()}.json`, JSON.stringify(backup, null, 2), 'application/json');
 });
@@ -1728,8 +1845,12 @@ function applyBackupText(text){
     if(data.subs){ subs = data.subs; saveSubs(); renderSubs(); }
     if(data.terms){ searchTerms = data.terms; saveTerms(); renderTerms(); }
     if(data.presets){ savePresets(data.presets); renderPresets(); }
-    if(Array.isArray(data.keywords)){ kwList = data.keywords; saveAlertLists(); }
-    if(Array.isArray(data.alertUsers)){ userList = data.alertUsers; saveAlertLists(); }
+    if(Array.isArray(data.chatTerms)){ chatTerms = data.chatTerms; saveChatTerms(); }
+    else if(Array.isArray(data.keywords) || Array.isArray(data.alertUsers)){   // 예전 백업 파일
+      (data.keywords||[]).forEach(t=>{ if(!chatTerms.some(v=>v.t===t && v.type==='msg')) chatTerms.push({t, type:'msg', alarm:true}); });
+      (data.alertUsers||[]).forEach(t=>{ if(!chatTerms.some(v=>v.t===t && v.type==='user')) chatTerms.push({t, type:'user', alarm:true}); });
+      saveChatTerms();
+    }
     log('설정 파일에서 복원 완료');
     return true;
   }catch(err){ log('설정 파일을 읽을 수 없음 (형식 오류)', true); return false; }
@@ -1761,7 +1882,7 @@ renderTerms();
 renderSubs();
 renderPresets();
 renderGrid();
-renderAlertLists();
+renderChatTerms();
 restoreHeights();
 log('모니터 시작됨');
 </script>
