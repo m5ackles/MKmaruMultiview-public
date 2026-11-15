@@ -50,9 +50,29 @@
   #grid.fit .info .statusbar .srow{flex-wrap:nowrap; overflow:hidden; white-space:nowrap;}
   #grid.fit.tiny .info .pulse, #grid.fit.tiny .info .videoline, #grid.fit.tiny .info .statusbar .srow + .srow{display:none;}
   #grid.fit.tiny .info .infohead{margin-bottom:2px;}
-  .info .vidOff{cursor:pointer; opacity:.6; padding:0 3px; flex-shrink:0;}
-  .info .vidOff:hover{opacity:1; color:var(--signal);}
-  .info .vidOff.off{opacity:1; color:var(--spike);}
+  /* 정보칸 아이콘 버튼 (SVG — 어느 폰에서나 보임) */
+  .info .ibtn{cursor:pointer; opacity:.55; padding:1px 2px; flex-shrink:0; display:inline-flex; align-items:center; color:var(--text);}
+  .info .ibtn svg{width:14px; height:14px; display:block;}
+  .info .ibtn:hover{opacity:1;}
+  .info .ibtn.on{opacity:1; color:var(--spike);}
+  .info .titles{touch-action:none; -webkit-user-select:none; user-select:none;}  /* 길게 눌러 순서 이동 */
+  .cell.dragging{opacity:.45;}
+  .cell.dropTarget .tile{outline:2px dashed var(--signal); outline-offset:2px;}
+  /* 키워드/사용자 감지 반짝임 */
+  .tile.kwhit{border-color:#a78bfa; animation:kwflash .7s ease-in-out 5;}
+  @keyframes kwflash{50%{box-shadow:0 0 0 2px #a78bfa, 0 0 24px -2px #a78bfa;}}
+  /* 확대 화면 채팅 미리보기 */
+  .chatPeek{position:absolute; left:0; right:0; bottom:0; z-index:3; pointer-events:none; display:none;
+    padding:18px 44px 8px 10px; font-size:12px; line-height:1.4; color:#fff;
+    background:linear-gradient(transparent, rgba(0,0,0,.78) 40%); text-shadow:0 1px 2px #000;}
+  .cell.enlarged .chatPeek.on{display:block;}
+  .chatPeek div{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .chatPeek .a{color:#9fc2e7; font-weight:600; margin-right:5px;}
+  .chatPeek .hit{color:#d8c8ff;}
+  /* 높이 조절 손잡이 */
+  .dragHandle{flex-shrink:0; height:16px; display:flex; align-items:center; justify-content:center; cursor:row-resize; touch-action:none; background:var(--panel); border-top:1px solid var(--line);}
+  .dragHandle::before{content:''; width:46px; height:4px; border-radius:2px; background:#3a4048;}
+  .dragHandle.active::before, .dragHandle:hover::before{background:var(--signal);}
   input[type=text], input[type=password]{
     background:var(--panel2); border:1px solid var(--line); color:var(--text);
     border-radius:6px; padding:7px 10px; font-size:12.5px; outline:none;
@@ -137,7 +157,7 @@
   #bottomPanel{
     background:var(--panel); border-top:1px solid var(--line);
     display:flex; flex-direction:column; flex-shrink:0;
-    height:46vh; transition:height .2s ease;
+    height:46vh;
   }
   #bottomPanel.collapsed{ height:auto; }
   #tabBar{ display:flex; align-items:stretch; border-bottom:1px solid var(--line); flex-shrink:0; }
@@ -147,7 +167,6 @@
     border-bottom:2px solid transparent;
   }
   .tabBtn.active{ color:var(--text); border-bottom-color:var(--signal); }
-  #collapseBtn{ width:38px; flex-shrink:0; background:transparent; border:none; color:var(--muted); border-radius:0; font-size:14px;}
   #panelBody{ flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; min-height:0; }
   #bottomPanel.collapsed #panelBody{ display:none; }
   .tabPane{ display:none; flex-direction:column; height:100%; }
@@ -168,8 +187,9 @@
   }
   .preset span{flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .preset button{padding:2px 6px; font-size:11px;}
-  #log{max-height:180px; overflow:auto; padding:10px 14px; font-size:11.5px; display:flex; flex-direction:column-reverse; gap:4px; transition:max-height .2s ease;}
-  #log.collapsed{max-height:0; padding-top:0; padding-bottom:0; overflow:hidden;}
+  #log{height:180px; flex-shrink:0; overflow:auto; padding:10px 14px; font-size:11.5px; display:flex; flex-direction:column-reverse; gap:4px;}
+  #log .entry a{color:inherit; text-decoration:underline dotted; text-underline-offset:2px;}
+  #log .entry.kw{color:#c4b5fd; border-left-color:#a78bfa;}
   #log .entry{color:var(--muted); border-left:2px solid var(--line); padding-left:7px;}
   #log .entry.spike{color:var(--spike); border-left-color:var(--spike);}
   #log .entry .t{color:#565d66; margin-right:5px;}
@@ -200,10 +220,10 @@
   </div>
 
   <div id="bottomPanel">
+    <div class="dragHandle" id="panelHandle" title="끌어서 영상/아래 패널 높이 조절"></div>
     <div id="tabBar">
       <button class="tabBtn active" data-tab="live">현재방송</button>
       <button class="tabBtn" data-tab="settings">설정</button>
-      <button id="collapseBtn">▾</button>
     </div>
     <div id="panelBody">
       <div class="tabPane active" id="tabLive">
@@ -211,10 +231,11 @@
           <h3>채널 상태 <span class="small">(🟢라이브 / ⚪오프라인)</span></h3>
           <div class="presetlist" id="subList"></div>
         </div>
-        <div class="sec" style="border-bottom:none; flex:0 0 auto;">
+        <div class="dragHandle" id="logHandle" title="끌어서 채널상태/로그 높이 조절"></div>
+        <div class="sec" style="border-bottom:none; flex:0 0 auto; padding-bottom:4px;">
           <h3>실시간 활동 로그
-            <button class="ghost" id="logCollapseBtn" style="float:right; padding:2px 7px; font-size:10.5px;">▾</button>
-            <button class="ghost" id="exportLogBtn" style="float:right; padding:2px 7px; font-size:10.5px; margin-right:4px;">CSV</button>
+            <button class="ghost" id="exportLogBtn" style="float:right; padding:2px 7px; font-size:10.5px;">로그 CSV</button>
+            <button class="ghost" id="exportRecordsBtn" style="float:right; padding:2px 7px; font-size:10.5px; margin-right:4px;" title="방송별 최고 시청자·급증 횟수 등">방송기록 CSV</button>
           </h3>
         </div>
         <div id="log"></div>
@@ -261,6 +282,38 @@
             <input type="text" id="chatPollInput" value="10" style="width:50px">
           </div>
           <div class="small">API 키 없이 유튜브 페이지를 직접 읽어서 할당량 제한이 없어요. 다만 너무 짧게(5초 미만) 하면 유튜브가 잠시 요청을 막을 수 있어요.</div>
+        </div>
+
+        <div class="sec">
+          <h3>키워드 / 사용자 알림 <span class="small">(채팅에 나오면 화면 반짝 + 로그 + 알림)</span></h3>
+          <div class="row">
+            <input type="text" id="kwInput" placeholder="키워드 (예: 속보, 경찰)" style="flex:1">
+            <button id="addKwBtn">추가</button>
+          </div>
+          <div class="presetlist" id="kwList"></div>
+          <div class="row" style="margin-top:8px;">
+            <input type="text" id="userInput" placeholder="채팅 닉네임 (예: @홍길동)" style="flex:1">
+            <button id="addUserBtn">추가</button>
+          </div>
+          <div class="presetlist" id="userList"></div>
+          <div class="small">로그의 밑줄 친 줄을 누르면 그 순간 근처부터 방송을 볼 수 있어요.</div>
+        </div>
+
+        <div class="sec">
+          <h3>보기 / 알림</h3>
+          <div class="row">
+            <label>확대 화면 채팅 미리보기<br><span class="small">크게 띄운 화면 아래에 최근 채팅 몇 줄 표시</span></label>
+            <div class="toggle" id="chatPeekToggle"></div>
+          </div>
+          <div class="row">
+            <label>알림 (급증 · 키워드 · 사용자)<br><span class="small">폰 상단 알림 / PC 바탕화면 알림 + 진동</span></label>
+            <div class="toggle" id="notifyToggle"></div>
+          </div>
+          <div class="row" id="keepRow" style="display:none;">
+            <label>백그라운드에서도 계속 감시<br><span class="small">다른 앱을 써도 감시 유지 (상단에 '감시 중' 표시, 배터리 더 씀)</span></label>
+            <div class="toggle" id="keepToggle"></div>
+          </div>
+          <div class="small">순서 바꾸기: 화면 아래 채널 이름을 길게 누른 채 다른 화면 위로 옮기면 자리가 바뀌어요. 📌 고정한 화면은 항상 앞에 와요.</div>
         </div>
 
         <div class="sec">
@@ -522,7 +575,304 @@ function applyWatchInfo(ch, w){
   ch.online = w.isLive;
   if(w.viewers!=null) ch.viewers = w.viewers;
   if(w.startTime) ch.startTime = w.startTime;
+  if(typeof getRec==='function' && w.videoId){   // 방송별 기록 갱신
+    const rec = getRec(ch);
+    rec.channel = ch.channelName || rec.channel; rec.handle = ch.handle || rec.handle;
+    rec.title = w.title || rec.title; rec.start = ch.startTime || rec.start; rec.last = Date.now();
+    if(ch.viewers!=null && ch.viewers > (rec.maxViewers||0)) rec.maxViewers = ch.viewers;
+    recDirty = true;
+  }
 }
+
+// ======================================================================
+//  추가 기능 모음: 아이콘 / 키워드·사용자 알림 / 급증 바로가기 / 방송기록 /
+//  채팅 미리보기 / 소리 화면 / 고정·순서 / 알림 / 높이 조절
+// ======================================================================
+
+// ---- SVG 아이콘 (글꼴에 없는 기호가 네모로 보이는 문제 해결) ----
+const ICON = {
+  power:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 3v8"/><path d="M6.3 7.3a8 8 0 1 0 11.4 0"/></svg>',
+  play:'<svg viewBox="0 0 24 24"><path d="M8 5l11 7-11 7z" fill="currentColor"/></svg>',
+  pin:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"><path d="M9 3h6l-1 6 4 4H6l4-4z"/><path d="M12 13v8"/></svg>',
+  pinOn:'<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"><path d="M9 3h6l-1 6 4 4H6l4-4z" fill="currentColor"/><path d="M12 13v8" fill="none"/></svg>',
+  sound:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path d="M16.5 9a4 4 0 0 1 0 6"/><path d="M19 6.5a8 8 0 0 1 0 11"/></svg>',
+  mute:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path d="M16 9.5l5 5M21 9.5l-5 5"/></svg>'
+};
+
+const esc = s => String(s??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const msgText = m => !m ? '' : (m.simpleText ?? (m.runs||[]).map(r=> r.text ?? (r.emoji?.shortcuts?.[0] || '')).join(''));
+
+// ---- 소리 화면 고르기: 고른 화면이 있으면 그것만, 없으면 확대 화면만 소리 (영상 다시 로딩 없이) ----
+let soundId = null;
+const isAudible = ch => soundId ? ch.id===soundId : !!ch.enlarged;
+// 영상이 막 로딩된 직후엔 명령을 못 받으므로 몇 번 나눠서 소리 켜기/끄기 명령 보냄
+function kickAudio(){ [800, 2000, 4000].forEach(ms=> setTimeout(applyAudio, ms)); }
+function applyAudio(){
+  channels.forEach(ch=>{
+    const f = grid.querySelector(`.tile[data-id="${ch.id}"] iframe`);
+    if(!f) return;
+    try{ f.contentWindow.postMessage(JSON.stringify({event:'command', func: isAudible(ch)?'unMute':'mute', args:''}), '*'); }catch(e){}
+  });
+}
+
+// ---- 순서 바꾸기 ----
+function moveChannel(fromId, toId){
+  const from = channels.findIndex(c=>c.id===fromId), to = channels.findIndex(c=>c.id===toId);
+  if(from<0 || to<0) return;
+  const [m] = channels.splice(from, 1);
+  channels.splice(to, 0, m);
+  const target = channels.find(c=>c.id===toId);
+  if(target) m.pinned = !!target.pinned;   // 고정 칸으로 옮기면 같이 고정
+  renderGrid();
+}
+// 채널 이름 부분을 길게(0.45초) 눌러서 다른 화면 위로 끌어다 놓기
+grid.addEventListener('pointerdown', e=>{
+  const head = e.target.closest('.info .titles');
+  if(!head) return;
+  const cell = head.closest('.cell');
+  const id = cell?.querySelector('.info')?.dataset.id;
+  if(!id) return;
+  const sx = e.clientX, sy = e.clientY;
+  let drag = null;
+  const timer = setTimeout(()=>{
+    drag = {id, cell};
+    cell.classList.add('dragging');
+    if(navigator.vibrate) try{ navigator.vibrate(25); }catch(_){}
+  }, 450);
+  const overCell = ev => document.elementFromPoint(ev.clientX, ev.clientY)?.closest('.cell');
+  const move = ev=>{
+    if(!drag){ if(Math.hypot(ev.clientX-sx, ev.clientY-sy) > 10){ clearTimeout(timer); done(); } return; }
+    ev.preventDefault();
+    grid.querySelectorAll('.dropTarget').forEach(x=>x.classList.remove('dropTarget'));
+    const o = overCell(ev);
+    if(o && o!==drag.cell && o.querySelector('.info')) o.classList.add('dropTarget');
+  };
+  const up = ev=>{
+    clearTimeout(timer);
+    if(drag){
+      const toId = overCell(ev)?.querySelector('.info')?.dataset.id;
+      drag.cell.classList.remove('dragging');
+      grid.querySelectorAll('.dropTarget').forEach(x=>x.classList.remove('dropTarget'));
+      if(toId && toId!==drag.id) moveChannel(drag.id, toId);
+    }
+    done();
+  };
+  function done(){ window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up); }
+  window.addEventListener('pointermove', move, {passive:false});
+  window.addEventListener('pointerup', up);
+  window.addEventListener('pointercancel', up);
+});
+
+// ---- 확대 화면 채팅 미리보기 ----
+let chatPeekOn = localStorage.getItem('mvm_chatpeek')!=='0';
+function chatPeekHTML(ch){
+  return (ch.recentChat||[]).slice(-4).map(m=>
+    `<div class="${m.hit?'hit':''}"><span class="a">${esc(m.a)}</span>${esc(m.m)}</div>`).join('');
+}
+function updateChatPeeks(){
+  channels.forEach(ch=>{
+    const el = grid.querySelector(`.tile[data-id="${ch.id}"] .chatPeek`);
+    if(el){ el.classList.toggle('on', chatPeekOn); el.innerHTML = chatPeekHTML(ch); }
+  });
+}
+
+// ---- 급증/키워드 순간 바로가기 링크 (방송 시작 기준 몇 초 지점, 20초 앞부터) ----
+function momentUrl(ch, t){
+  if(!ch.startTime) return `https://www.youtube.com/watch?v=${ch.videoId}`;
+  const off = Math.max(0, Math.floor((t - ch.startTime)/1000) - 20);
+  return `https://www.youtube.com/watch?v=${ch.videoId}&t=${off}s`;
+}
+
+// ---- 키워드 / 사용자 알림 ----
+let kwList = JSON.parse(localStorage.getItem('mvm_kw')||'[]');
+let userList = JSON.parse(localStorage.getItem('mvm_alertusers')||'[]');
+function saveAlertLists(){
+  localStorage.setItem('mvm_kw', JSON.stringify(kwList));
+  localStorage.setItem('mvm_alertusers', JSON.stringify(userList));
+  renderAlertLists();
+}
+function renderAlertLists(){
+  [['#kwList', kwList, '키워드'], ['#userList', userList, '닉네임']].forEach(([sel, arr, label])=>{
+    const box = $(sel); if(!box) return;
+    box.innerHTML = '';
+    arr.forEach(v=>{
+      const row = document.createElement('div'); row.className = 'preset';
+      const sp = document.createElement('span'); sp.textContent = (label==='닉네임'?'👤 ':'🔑 ') + v;
+      const b = document.createElement('button'); b.textContent = '✕';
+      b.addEventListener('click', ()=>{
+        if(!confirm(`${label} "${v}" 를 삭제할까요?`)) return;
+        const i = arr.indexOf(v); if(i>=0) arr.splice(i,1); saveAlertLists();
+      });
+      row.append(sp, b); box.appendChild(row);
+    });
+  });
+}
+function addAlertItem(arr, input){
+  const v = $(input).value.trim();
+  if(!v || arr.includes(v)) return;
+  arr.push(v); saveAlertLists(); $(input).value='';
+}
+$('#addKwBtn').addEventListener('click', ()=> addAlertItem(kwList, '#kwInput'));
+$('#kwInput').addEventListener('keydown', e=>{ if(e.key==='Enter') addAlertItem(kwList, '#kwInput'); });
+$('#addUserBtn').addEventListener('click', ()=> addAlertItem(userList, '#userInput'));
+$('#userInput').addEventListener('keydown', e=>{ if(e.key==='Enter') addAlertItem(userList, '#userInput'); });
+
+function checkAlerts(ch, msgs){
+  if(!kwList.length && !userList.length) return;
+  const name = ch.channelName || ch.name;
+  msgs.forEach(m=>{
+    const text = (m.m||'').toLowerCase();
+    const author = (m.a||'').replace(/^@/,'').toLowerCase();
+    const kw = kwList.find(k=> k && text.includes(k.toLowerCase()));
+    const us = userList.find(u=>{ const x = u.replace(/^@/,'').toLowerCase(); return x && (author===x || (x.length>=3 && author.includes(x))); });
+    if(!kw && !us) return;
+    m.hit = true;
+    const now = Date.now();
+    const what = us ? `사용자 ${m.a}` : `키워드 "${kw}"`;
+    const rec = getRec(ch); rec.kw = (rec.kw||0) + 1; recDirty = true;
+    log(`${name} — ${what} · ${m.a}: ${(m.m||'').slice(0,80)}`, 'kw', momentUrl(ch, now));
+    flashTile(ch);
+    notify(`${us?'👤':'🔑'} ${what} · ${name}`, `${m.a}: ${(m.m||'').slice(0,100)}`, (us?'u:':'k:')+ch.id+':'+(us||kw), 20000);
+  });
+}
+function flashTile(ch){
+  const t = grid.querySelector(`.tile[data-id="${ch.id}"]`);
+  if(!t) return;
+  t.classList.remove('kwhit'); void t.offsetWidth; t.classList.add('kwhit');
+  clearTimeout(t._kwTimer); t._kwTimer = setTimeout(()=> t.classList.remove('kwhit'), 4000);
+}
+
+// ---- 알림 (앱: 폰 상단 알림 / PC: 바탕화면 알림) ----
+let notifyOn = localStorage.getItem('mvm_notify')==='1';
+const lastNotify = {};
+function notify(title, text, key, gapMs=60000){
+  if(!notifyOn) return;
+  const now = Date.now();
+  if(lastNotify[key] && now - lastNotify[key] < gapMs) return;   // 같은 알림은 일정 시간 한 번만
+  lastNotify[key] = now;
+  if(Native.has){ NativeBridge.postMessage(JSON.stringify({type:'notify', title, text})); return; }
+  try{
+    if('Notification' in window && Notification.permission==='granted') new Notification(title, {body:text});
+    if(navigator.vibrate) navigator.vibrate([120,60,120]);
+  }catch(e){}
+}
+
+// ---- 방송별 기록 (최고 시청자, 최고 채팅, 급증 횟수·시각, 키워드 알림 수) ----
+let records = JSON.parse(localStorage.getItem('mvm_records')||'{}');
+let recDirty = false;
+function getRec(ch){
+  if(!records[ch.videoId]) records[ch.videoId] = {videoId:ch.videoId, channel:'', handle:'', title:'', start:null, first:Date.now(), last:Date.now(), maxViewers:0, peakRate:0, peakTime:null, surges:[], kw:0};
+  return records[ch.videoId];
+}
+function saveRecords(){
+  if(!recDirty) return;
+  recDirty = false;
+  const keys = Object.keys(records);
+  if(keys.length > 200){ keys.sort((a,b)=> (records[a].last||0)-(records[b].last||0)).slice(0, keys.length-200).forEach(k=> delete records[k]); }
+  try{ localStorage.setItem('mvm_records', JSON.stringify(records)); }catch(e){}
+}
+function exportRecords(){
+  saveRecords();
+  const f = t => t ? new Date(t).toLocaleString('ko-KR',{hour12:false}) : '';
+  const hm = t => new Date(t).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',hour12:false});
+  const dur = r => { const st = r.start||r.first; if(!st||!r.last) return ''; const m = Math.max(0,Math.round((r.last-st)/60000)); return `${Math.floor(m/60)}시간 ${m%60}분`; };
+  const head = ['날짜','채널','핸들','방송 제목','방송 시작','마지막 확인','방송 시간(확인 기준)','최고 시청자','최고 채팅(분당)','최고 채팅 시각','급증 횟수','급증 시각','키워드/사용자 알림 수','링크'];
+  const rows = Object.values(records).sort((a,b)=>(b.last||0)-(a.last||0)).map(r=>[
+    f(r.start||r.first).split(' ').slice(0,3).join(' '), r.channel, r.handle, r.title, f(r.start), f(r.last), dur(r),
+    r.maxViewers||'', r.peakRate||'', r.peakTime?hm(r.peakTime):'', (r.surges||[]).length, (r.surges||[]).map(hm).join(' / '),
+    r.kw||0, `https://www.youtube.com/watch?v=${r.videoId}`]);
+  const csv = '﻿' + [head, ...rows].map(r=> r.map(x=>`"${String(x??'').replace(/"/g,'""')}"`).join(',')).join('\n');
+  saveTextFile(`multiview-records-${Date.now()}.csv`, csv, 'text/csv');
+}
+$('#exportRecordsBtn').addEventListener('click', exportRecords);
+setInterval(saveRecords, 15000);
+
+// ---- 설정 토글: 채팅 미리보기 / 알림 / 백그라운드 감시 ----
+$('#chatPeekToggle').classList.toggle('on', chatPeekOn);
+$('#chatPeekToggle').addEventListener('click', ()=>{
+  chatPeekOn = !chatPeekOn; $('#chatPeekToggle').classList.toggle('on', chatPeekOn);
+  localStorage.setItem('mvm_chatpeek', chatPeekOn?'1':'0'); updateChatPeeks();
+});
+$('#notifyToggle').classList.toggle('on', notifyOn);
+$('#notifyToggle').addEventListener('click', ()=>{
+  notifyOn = !notifyOn; $('#notifyToggle').classList.toggle('on', notifyOn);
+  localStorage.setItem('mvm_notify', notifyOn?'1':'0');
+  if(notifyOn){
+    if(Native.has) NativeBridge.postMessage(JSON.stringify({type:'notifyPerm'}));
+    else if('Notification' in window && Notification.permission==='default') Notification.requestPermission();
+  }
+});
+if(Native.has){
+  $('#keepRow').style.display = 'flex';
+  let keepOn = localStorage.getItem('mvm_keep')==='1';
+  $('#keepToggle').classList.toggle('on', keepOn);
+  $('#keepToggle').addEventListener('click', ()=>{
+    keepOn = !keepOn; $('#keepToggle').classList.toggle('on', keepOn);
+    localStorage.setItem('mvm_keep', keepOn?'1':'0');
+    NativeBridge.postMessage(JSON.stringify({type:'keepAlive', on:keepOn}));
+  });
+}
+
+// ---- 높이 조절: 영상 ↔ 아래 패널, 채널 상태 ↔ 로그 (끌어서 조절, 최소 높이 보장, 저장) ----
+const MIN_VIDEO_H = 140;   // 영상 영역 최소 (상단바 + 화면 한 줄 정도)
+const MIN_LIST_H = 84;     // 채널 상태 목록 최소 (2줄)
+const MIN_LOG_H = 66;      // 로그 최소 (3줄)
+function panelLimits(){
+  const minP = $('#panelHandle').offsetHeight + $('#tabBar').offsetHeight + 120;  // 탭 + 내용 조금
+  const maxP = window.innerHeight - $('#topbar').offsetHeight - MIN_VIDEO_H;
+  return [minP, Math.max(minP, maxP)];
+}
+function setPanelH(h){
+  const [mn, mx] = panelLimits();
+  h = Math.round(Math.min(mx, Math.max(mn, h)));
+  $('#bottomPanel').style.height = h + 'px';
+  return h;
+}
+function logMax(){
+  const body = $('#panelBody').clientHeight;
+  const logHead = $('#logHandle').offsetHeight + $('#logHandle').nextElementSibling.offsetHeight;
+  const listHead = 46; // 채널 상태 제목 + 여백
+  return Math.max(MIN_LOG_H, body - logHead - listHead - MIN_LIST_H);
+}
+function setLogH(h){
+  h = Math.round(Math.min(logMax(), Math.max(MIN_LOG_H, h)));
+  $('#log').style.height = h + 'px';
+  return h;
+}
+// 로그 손잡이용: 목록이 최소 높이면 그만큼 아래 패널을 키워서 같이 밀어 올림
+function setLogHPush(h){
+  const over = h - logMax();
+  if(over > 0) setPanelH($('#bottomPanel').offsetHeight + over);
+  return setLogH(h);
+}
+function makeResizer(handle, getH, setH, key){
+  handle.addEventListener('pointerdown', e=>{
+    e.preventDefault();
+    const sy = e.clientY, sh = getH();
+    handle.classList.add('active');
+    try{ handle.setPointerCapture(e.pointerId); }catch(_){}
+    const move = ev=>{ ev.preventDefault(); setH(sh - (ev.clientY - sy)); };   // 위로 끌면 아래쪽이 커짐
+    const up = ()=>{
+      handle.classList.remove('active');
+      localStorage.setItem(key, String(getH()));
+      localStorage.setItem('mvm_panelH', String($('#bottomPanel').offsetHeight));
+      localStorage.setItem('mvm_logH', String($('#log').offsetHeight));
+      handle.removeEventListener('pointermove', move); handle.removeEventListener('pointerup', up); handle.removeEventListener('pointercancel', up);
+    };
+    handle.addEventListener('pointermove', move);
+    handle.addEventListener('pointerup', up);
+    handle.addEventListener('pointercancel', up);
+  });
+}
+makeResizer($('#panelHandle'), ()=> $('#bottomPanel').offsetHeight, h=>{ setPanelH(h); setLogH($('#log').offsetHeight); }, 'mvm_panelH');
+makeResizer($('#logHandle'), ()=> $('#log').offsetHeight, setLogHPush, 'mvm_logH');
+function restoreHeights(){
+  const ph = parseInt(localStorage.getItem('mvm_panelH'));
+  setPanelH(ph || Math.round(window.innerHeight*0.46));
+  const lh = parseInt(localStorage.getItem('mvm_logH'));
+  setLogH(lh || 180);
+}
+window.addEventListener('resize', ()=>{ setPanelH($('#bottomPanel').offsetHeight); setLogH($('#log').offsetHeight); });
 
 // ---- broadcast-safe mode (substitute image instead of live video) ----
 let broadcastMode = false;
@@ -584,21 +934,14 @@ $('#clearSubImgBtn').addEventListener('click', ()=>{
   if(broadcastMode) renderGrid();
 });
 
-// ---- bottom panel: tabs + collapse ----
+// ---- bottom panel: tabs ----
 document.querySelectorAll('.tabBtn').forEach(btn=>{
   btn.addEventListener('click', ()=>{
     document.querySelectorAll('.tabBtn').forEach(b=>b.classList.remove('active'));
     document.querySelectorAll('.tabPane').forEach(p=>p.classList.remove('active'));
     btn.classList.add('active');
     $('#tab'+btn.dataset.tab[0].toUpperCase()+btn.dataset.tab.slice(1)).classList.add('active');
-    $('#bottomPanel').classList.remove('collapsed');
-    $('#collapseBtn').textContent = '▾';
   });
-});
-$('#collapseBtn').addEventListener('click', ()=>{
-  const panel = $('#bottomPanel');
-  panel.classList.toggle('collapsed');
-  $('#collapseBtn').textContent = panel.classList.contains('collapsed') ? '▴' : '▾';
 });
 
 function extractVideoId(input){
@@ -648,10 +991,12 @@ function infoInnerHTML(ch){
   return `
     <div class="infohead">
       <div class="titles">
-        <div class="channelline">${ch.channelName?ch.channelName:'채널명 확인중'}${ch.handle?` <span class="small">${ch.handle}</span>`:''}</div>
-        <div class="videoline">${ch.name}</div>
+        <div class="channelline">${ch.channelName?esc(ch.channelName):'채널명 확인중'}${ch.handle?` <span class="small">${esc(ch.handle)}</span>`:''}</div>
+        <div class="videoline">${esc(ch.name)}</div>
       </div>
-      <span class="vidOff${ch.videoOff?' off':''}" title="${ch.videoOff?'화면 켜기':'화면 끄기'}">${ch.videoOff?'▶':'⏻'}</span>
+      <span class="ibtn pinBtn${ch.pinned?' on':''}" title="${ch.pinned?'고정 풀기':'맨 앞에 고정'}">${ch.pinned?ICON.pinOn:ICON.pin}</span>
+      <span class="ibtn soundBtn${soundId===ch.id?' on':''}" title="${soundId===ch.id?'소리 끄기':'이 화면 소리 듣기'}">${isAudible(ch)?ICON.sound:ICON.mute}</span>
+      <span class="ibtn vidOff${ch.videoOff?' on':''}" title="${ch.videoOff?'화면 켜기':'화면 끄기'}">${ch.videoOff?ICON.play:ICON.power}</span>
       <span class="close">✕</span>
     </div>
     <div class="pulse">${ch.rateHistory.slice(-24).map(s=>`<i data-t="${s.t}" data-v="${s.v}" style="height:${Math.min(100,s.v*8)}%; opacity:${s.v>0?1:0.4}; background:${s.v>=8?'var(--spike)':'var(--muted)'}"></i>`).join('')}</div>
@@ -669,6 +1014,8 @@ function bindInfoListeners(info, ch){
     removeChannel(ch.id);
   });
   info.querySelector('.vidOff').addEventListener('click', ()=> toggleVideo(ch));
+  info.querySelector('.pinBtn').addEventListener('click', ()=>{ ch.pinned = !ch.pinned; renderGrid(); });
+  info.querySelector('.soundBtn').addEventListener('click', ()=>{ soundId = (soundId===ch.id) ? null : ch.id; applyAudio(); updateInfoPanels(); });
   info.querySelector('.pulse').addEventListener('click', (e)=>{
     const pulseEl = e.currentTarget;
     const rect = pulseEl.getBoundingClientRect();
@@ -697,8 +1044,8 @@ function updateInfoPanels(){
 function videoAreaHTML(ch){
   if(broadcastMode && substituteImg) return `<img src="${substituteImg}" style="width:100%;height:100%;object-fit:cover;display:block;">`;
   if(broadcastMode) return `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:11px;text-align:center;padding:10px;">방송모드 켜짐 — 설정탭에서<br>대체 이미지를 지정해주세요</div>`;
-  if(ch.videoOff) return `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px;">⏻ 화면 꺼짐</div>`;
-  return `<iframe src="https://www.youtube-nocookie.com/embed/${ch.videoId}?autoplay=1&mute=${ch.enlarged?0:1}&playsinline=1" allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
+  if(ch.videoOff) return `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;gap:6px;color:var(--muted);font-size:12px;">${ICON.power} 화면 꺼짐</div>`;
+  return `<iframe src="https://www.youtube-nocookie.com/embed/${ch.videoId}?autoplay=1&mute=${isAudible(ch)?0:1}&playsinline=1&enablejsapi=1" allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
 }
 
 // 개별 화면 끄기/켜기 — 그 화면만 바꾸고 다른 영상은 다시 로딩하지 않음 (통계는 계속 갱신)
@@ -713,7 +1060,7 @@ function toggleVideo(ch){
 function renderGrid(){
   grid.style.setProperty('--cols', $('#colSelect').value);
   grid.innerHTML='';
-  const renderOrder = [...channels].sort((a,b)=> (b.enlarged?1:0) - (a.enlarged?1:0));
+  const renderOrder = [...channels].sort((a,b)=> ((b.enlarged?2:0)+(b.pinned?1:0)) - ((a.enlarged?2:0)+(a.pinned?1:0)));
   renderOrder.forEach(ch=>{
     const cell = document.createElement('div');
     cell.className = 'cell' + (ch.enlarged?' enlarged':'');
@@ -723,6 +1070,7 @@ function renderGrid(){
     tile.dataset.id = ch.id;
     tile.innerHTML = `
       <div class="vwrap" style="width:100%;height:100%;">${videoAreaHTML(ch)}</div>
+      <div class="chatPeek${chatPeekOn?' on':''}">${chatPeekHTML(ch)}</div>
       <button class="shrinkBtn" title="축소">🗗</button>
       <a class="ytlink" href="https://www.youtube.com/watch?v=${ch.videoId}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="유튜브 앱/사이트에서 열기">▶</a>
     `;
@@ -732,7 +1080,9 @@ function renderGrid(){
       if(rotation) return; // manual enlarge disabled during rotation
       if(ch.enlarged) return; // already enlarged: let taps reach the player (play/seek bar) instead of toggling
       channels.forEach(c=> c.enlarged = (c.id===ch.id));
+      soundId = null;          // 탭해서 확대한 화면 소리가 나오게
       renderGrid();
+      kickAudio();
     });
 
     const info = document.createElement('div');
@@ -859,10 +1209,17 @@ async function pollChat(ch){
     if(next) ch.liveChatId = next;
     ch._retry = 0;
     let count = 0;
+    const msgs = [];
     (lcc.actions||[]).forEach(a=>{
       const it = a.addChatItemAction?.item;
-      if(it && (it.liveChatTextMessageRenderer || it.liveChatPaidMessageRenderer || it.liveChatPaidStickerRenderer || it.liveChatMembershipItemRenderer)) count++;
+      const r = it && (it.liveChatTextMessageRenderer || it.liveChatPaidMessageRenderer || it.liveChatPaidStickerRenderer || it.liveChatMembershipItemRenderer);
+      if(!r) return;
+      count++;
+      msgs.push({a: textOf(r.authorName), m: msgText(r.message || r.headerSubtext)});
     });
+    const firstFetch = !ch.lastTs;   // 처음 받은 묶음은 지난 채팅이라 알림은 건너뜀
+    if(!firstFetch) checkAlerts(ch, msgs);
+    ch.recentChat = (ch.recentChat||[]).concat(msgs).slice(-30);
     const now = Date.now();
     const elapsedMin = ch.lastTs ? (now-ch.lastTs)/60000 : 1;
     const ratePerMin = ch.lastTs ? Math.round(count/Math.max(elapsedMin,0.2)) : 0;
@@ -870,9 +1227,15 @@ async function pollChat(ch){
     ch.rateHistory.push({t:now, v:ratePerMin});
     if(ch.rateHistory.length>40) ch.rateHistory.shift();
     if(ratePerMin > (ch.peakRate||0)){ ch.peakRate = ratePerMin; ch.peakTime = now; }
+    const rec = getRec(ch);
+    if(ratePerMin > (rec.peakRate||0)){ rec.peakRate = ratePerMin; rec.peakTime = now; recDirty = true; }
     const wasHot = ch.hot;
     ch.hot = ratePerMin >= 8;
-    if(ch.hot && !wasHot) log(`${ch.name} 활동 급증 (${ratePerMin}/분)`, true);
+    if(ch.hot && !wasHot){
+      rec.surges.push(now); recDirty = true;
+      log(`${ch.channelName||ch.name} 활동 급증 (${ratePerMin}/분) ▶ 그 순간 보기`, true, momentUrl(ch, now));
+      notify(`🔥 채팅 급증 · ${ch.channelName||ch.name}`, `분당 ${ratePerMin}개`, 'surge:'+ch.id);
+    }
   }catch(e){
     log(`${ch.name} 채팅 확인 네트워크 오류: ${e.message}`, true);
     // 400/403/404 = 토큰이 거절됨 → 새 토큰으로 다시 연결 (3번까지)
@@ -888,7 +1251,7 @@ async function pollChat(ch){
 
 function tick(){
   channels.forEach(ch=>{ if(ch.liveChatId) pollChat(ch); });
-  setTimeout(()=> updateInfoPanels(), 900);
+  setTimeout(()=>{ updateInfoPanels(); updateChatPeeks(); saveRecords(); }, 900);
 }
 let chatPollInterval = parseInt(localStorage.getItem('mvm_chatpoll'))||10;
 function startPolling(){
@@ -965,23 +1328,26 @@ function stopRotation(){ if(rotationTimer){ clearInterval(rotationTimer); rotati
 
 // ---- log ----
 let logRows = [];
-function log(msg, spike=false){
+// kind: true/'spike' = 주황(급증·오류), 'kw' = 보라(키워드/사용자). href 가 있으면 그 줄을 누르면 해당 순간으로 이동
+function log(msg, kind=false, href=null){
   const t = new Date().toLocaleTimeString('ko-KR',{hour12:false});
-  logRows.push([t,msg]);
+  logRows.push([t, msg, href||'']);
   const div = document.createElement('div');
-  div.className = 'entry'+(spike?' spike':'');
-  div.innerHTML = `<span class="t mono">${t}</span>${msg}`;
+  div.className = 'entry' + (kind==='kw' ? ' kw' : (kind ? ' spike' : ''));
+  const ts = document.createElement('span'); ts.className='t mono'; ts.textContent = t;
+  div.appendChild(ts);
+  if(href){
+    const a = document.createElement('a'); a.href = href; a.target = '_blank'; a.rel = 'noopener'; a.textContent = msg;
+    div.appendChild(a);
+  } else div.appendChild(document.createTextNode(msg));   // 채팅 내용이 HTML 로 실행되지 않게 글자로만 넣음
   logEl.prepend(div);
+  while(logEl.children.length > 500) logEl.lastElementChild.remove();
 }
 $('#exportLogBtn').addEventListener('click', ()=>{
-  const csv = '﻿time,message\n'+logRows.map(r=>`"${r[0]}","${r[1].replace(/"/g,'""')}"`).join('\n');
+  const csv = '\uFEFFtime,message,link\n'+logRows.map(r=>r.map(x=>`"${String(x).replace(/"/g,'""')}"`).join(',')).join('\n');
   saveTextFile(`multiview-log-${Date.now()}.csv`, csv, 'text/csv');
 });
-$('#logCollapseBtn').addEventListener('click', ()=>{
-  const logPanel = $('#log');
-  logPanel.classList.toggle('collapsed');
-  $('#logCollapseBtn').textContent = logPanel.classList.contains('collapsed') ? '▴' : '▾';
-});
+
 
 // ---- presets (favorites) ----
 function getPresets(){ return JSON.parse(localStorage.getItem('mvm_presets')||'{}'); }
@@ -1257,7 +1623,9 @@ $('#exportSettingsBtn').addEventListener('click', ()=>{
   const backup = {
     subs: JSON.parse(localStorage.getItem('mvm_subs')||'[]'),
     terms: JSON.parse(localStorage.getItem('mvm_terms')||'[]'),
-    presets: JSON.parse(localStorage.getItem('mvm_presets')||'{}')
+    presets: JSON.parse(localStorage.getItem('mvm_presets')||'{}'),
+    keywords: kwList,
+    alertUsers: userList
   };
   saveTextFile(`multiview-settings-${Date.now()}.json`, JSON.stringify(backup, null, 2), 'application/json');
 });
@@ -1270,6 +1638,8 @@ function applyBackupText(text){
     if(data.subs){ subs = data.subs; saveSubs(); renderSubs(); }
     if(data.terms){ searchTerms = data.terms; saveTerms(); renderTerms(); }
     if(data.presets){ savePresets(data.presets); renderPresets(); }
+    if(Array.isArray(data.keywords)){ kwList = data.keywords; saveAlertLists(); }
+    if(Array.isArray(data.alertUsers)){ userList = data.alertUsers; saveAlertLists(); }
     log('설정 파일에서 복원 완료');
     return true;
   }catch(err){ log('설정 파일을 읽을 수 없음 (형식 오류)', true); return false; }
@@ -1301,6 +1671,8 @@ renderTerms();
 renderSubs();
 renderPresets();
 renderGrid();
+renderAlertLists();
+restoreHeights();
 log('모니터 시작됨');
 </script>
 </body>
