@@ -435,7 +435,7 @@
             </select>
           </div>
           <div class="row">
-            <label>채팅만 보기 줄 수<br><span class="small">각 화면 📌 옆 말풍선 버튼 — 영상은 흐리게, 소리 끔, 작은 화면에도 표시</span></label>
+            <label>채팅만 보기 줄 수<br><span class="small">각 화면 📌 옆 말풍선 버튼 — 영상은 흐리게, 작은 화면에도 표시 (소리는 그대로)</span></label>
             <select id="chatOnlyLinesSelect">
               <option value="3">3줄</option>
               <option value="4">4줄</option>
@@ -781,7 +781,7 @@ const msgText = m => !m ? '' : (m.simpleText ?? (m.runs||[]).map(r=> r.text ?? (
 
 // ---- 소리 화면 고르기: 고른 화면이 있으면 그것만, 없으면 확대 화면만 소리 (영상 다시 로딩 없이) ----
 let soundId = null;
-const isAudible = ch => !ch.chatOnly && (soundId ? ch.id===soundId : !!ch.enlarged);
+const isAudible = ch => soundId ? ch.id===soundId : !!ch.enlarged;   // 채팅만 보기여도 소리는 그대로
 // 영상이 막 로딩된 직후엔 명령을 못 받으므로 몇 번 나눠서 소리 켜기/끄기 명령 보냄
 function kickAudio(){ [800, 2000, 4000].forEach(ms=> setTimeout(applyAudio, ms)); }
 function applyAudio(){
@@ -872,7 +872,7 @@ function chatPeekHTML(ch){
   if(!lines && ch.chatOnly) return `<div class="wait">${ch.liveChatId ? '채팅 기다리는 중…' : '채팅 연결 중… (채팅이 꺼진 방송일 수 있어요)'}</div>`;
   return lines;
 }
-// 채팅만 보기 켜기/끄기 — 영상은 다시 로딩하지 않고 흐림 처리만, 소리는 끔
+// 채팅만 보기 켜기/끄기 — 영상은 다시 로딩하지 않고 흐림 처리만 (소리는 영향 없음)
 function toggleChatOnly(ch){
   ch.chatOnly = !ch.chatOnly;
   const t = grid.querySelector(`.tile[data-id="${ch.id}"]`);
@@ -1325,7 +1325,7 @@ function infoInnerHTML(ch){
       </div>
       <span class="ibtns${ch.iconsOpen?' open':''}">
       <span class="ibtn pinBtn${ch.pinned?' on':''}" title="${ch.pinned?'고정 풀기':'맨 앞에 고정'}">${ch.pinned?ICON.pinOn:ICON.pin}</span>
-      <span class="ibtn chatOnlyBtn${ch.chatOnly?' on':''}" title="${ch.chatOnly?'채팅만 보기 끄기':'채팅만 보기 (영상 흐리게 · 소리 끔)'}">${ICON.chat}</span>
+      <span class="ibtn chatOnlyBtn${ch.chatOnly?' on':''}" title="${ch.chatOnly?'채팅만 보기 끄기':'채팅만 보기 (영상 흐리게)'}">${ICON.chat}</span>
       <span class="ibtn peekBtn${ch.peekOff?' off':''}" title="${ch.peekOff?'채팅 미리보기 켜기 (확대 시)':'채팅 미리보기 끄기 (확대 시)'}">${ch.peekOff?ICON.noteOff:ICON.note}</span>
       <span class="ibtn soundBtn${soundId===ch.id?' on':''}" title="${soundId===ch.id?'소리 끄기':'이 화면 소리 듣기'}">${isAudible(ch)?ICON.sound:ICON.mute}</span>
       <span class="ibtn vidOff${ch.videoOff?' on':''}" title="${ch.videoOff?'화면 켜기':'화면 끄기'}">${ch.videoOff?ICON.play:ICON.power}</span>
