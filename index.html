@@ -208,6 +208,13 @@
   .info .channelline{font-weight:700; font-size:11.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .info .videoline{font-weight:400; font-size:10.5px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-top:1px;}
   .info .close{cursor:pointer; opacity:.6; padding:0 3px; flex-shrink:0;}
+  /* 버튼 묶음: 기본은 접힘 → 채널 이름·제목이 가로폭을 다 씀 */
+  .info .ibtns{display:none; align-items:center; gap:2px; flex-shrink:0;}
+  .info .ibtns.open{display:inline-flex; animation:ibIn .15s ease;}
+  @keyframes ibIn{from{opacity:0; transform:translateX(8px);} to{opacity:1; transform:none;}}
+  .info .moreBtn{opacity:.7; padding:1px 3px; border-radius:5px;}
+  .info .moreBtn:hover{background:var(--panel2);}
+  .tile .shrinkBtn svg{width:15px; height:15px; display:block;}
   .info .close:hover{opacity:1; color:var(--danger);}
   .info .pulse{
     display:flex; align-items:flex-end; gap:2px; height:20px; cursor:pointer; margin-bottom:5px;
@@ -449,7 +456,7 @@
             <div class="toggle" id="notifyToggle"></div>
           </div>
           <div class="row" id="keepRow" style="display:none;">
-            <label>백그라운드에서도 계속 감시<br><span class="small">다른 앱을 써도 감시 유지 (상단에 '감시 중' 표시, 배터리 더 씀)</span></label>
+            <label>백그라운드에서도 계속<br><span class="small">홈 버튼을 눌러도 소리 나는 화면은 계속 재생 + 감시 유지 (나머지 화면은 잠시 멈춤, 상단에 '감시 중' 표시, 배터리 더 씀)</span></label>
             <div class="toggle" id="keepToggle"></div>
           </div>
           <div class="small">순서 바꾸기: 화면 아래 채널 이름을 길게 누른 채 다른 화면 위로 옮기면 자리가 바뀌어요. 📌 고정한 화면은 항상 앞에 와요.</div>
@@ -760,6 +767,9 @@ const ICON = {
   pin:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"><path d="M9 3h6l-1 6 4 4H6l4-4z"/><path d="M12 13v8"/></svg>',
   pinOn:'<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"><path d="M9 3h6l-1 6 4 4H6l4-4z" fill="currentColor"/><path d="M12 13v8" fill="none"/></svg>',
   sound:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path d="M16.5 9a4 4 0 0 1 0 6"/><path d="M19 6.5a8 8 0 0 1 0 11"/></svg>',
+  chevL:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>',
+  chevR:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>',
+  shrink:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg>',
   chat:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M4 5h16v11H10l-5 4v-4H4z"/><path d="M8 9h8M8 12h5"/></svg>',
   note:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4"/><path d="M9 12h6M9 16h6"/></svg>',
   noteOff:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4"/><path d="M3 3l18 18"/></svg>',
@@ -781,6 +791,28 @@ function applyAudio(){
     try{ f.contentWindow.postMessage(JSON.stringify({event:'command', func: isAudible(ch)?'unMute':'mute', args:''}), '*'); }catch(e){}
   });
 }
+
+// ---- 앱이 뒤로 갈 때 / 돌아올 때 (앱에서 호출) ----
+// 뒤로 가면: 소리 나는 화면만 계속, 나머지는 잠시 멈춤 (데이터·배터리 절약, 채팅 감시는 계속)
+// 돌아오면: 멈췄던 화면을 실시간 지점으로 다시 틀기
+let bgPaused = [];
+function ytCmd(ch, func){
+  const f = grid.querySelector(`.tile[data-id="${ch.id}"] iframe`);
+  try{ f && f.contentWindow.postMessage(JSON.stringify({event:'command', func, args:''}), '*'); }catch(e){}
+}
+window.onAppBackground = ()=>{
+  bgPaused = channels.filter(ch=> !isAudible(ch) && !ch.videoOff && !broadcastMode).map(ch=> ch.id);
+  bgPaused.forEach(id=>{ const ch = channels.find(c=>c.id===id); if(ch) ytCmd(ch, 'pauseVideo'); });
+};
+window.onAppForeground = ()=>{
+  bgPaused.forEach(id=>{
+    const ch = channels.find(c=>c.id===id); if(!ch) return;
+    const v = grid.querySelector(`.tile[data-id="${ch.id}"] .vwrap`);
+    if(v) v.innerHTML = videoAreaHTML(ch);   // 다시 로딩 → 실시간 지점부터
+  });
+  bgPaused = [];
+  kickAudio();
+};
 
 // ---- 순서 바꾸기 ----
 function moveChannel(fromId, toId){
@@ -1291,12 +1323,15 @@ function infoInnerHTML(ch){
         <div class="channelline">${ch.channelName?esc(ch.channelName):'채널명 확인중'}${ch.handle?` <span class="small">${esc(ch.handle)}</span>`:''}</div>
         <div class="videoline">${esc(ch.name)}</div>
       </div>
+      <span class="ibtns${ch.iconsOpen?' open':''}">
       <span class="ibtn pinBtn${ch.pinned?' on':''}" title="${ch.pinned?'고정 풀기':'맨 앞에 고정'}">${ch.pinned?ICON.pinOn:ICON.pin}</span>
       <span class="ibtn chatOnlyBtn${ch.chatOnly?' on':''}" title="${ch.chatOnly?'채팅만 보기 끄기':'채팅만 보기 (영상 흐리게 · 소리 끔)'}">${ICON.chat}</span>
       <span class="ibtn peekBtn${ch.peekOff?' off':''}" title="${ch.peekOff?'채팅 미리보기 켜기 (확대 시)':'채팅 미리보기 끄기 (확대 시)'}">${ch.peekOff?ICON.noteOff:ICON.note}</span>
       <span class="ibtn soundBtn${soundId===ch.id?' on':''}" title="${soundId===ch.id?'소리 끄기':'이 화면 소리 듣기'}">${isAudible(ch)?ICON.sound:ICON.mute}</span>
       <span class="ibtn vidOff${ch.videoOff?' on':''}" title="${ch.videoOff?'화면 켜기':'화면 끄기'}">${ch.videoOff?ICON.play:ICON.power}</span>
       <span class="close">✕</span>
+      </span>
+      <span class="ibtn moreBtn" title="${ch.iconsOpen?'버튼 접기':'버튼 펼치기'}">${ch.iconsOpen?ICON.chevR:ICON.chevL}</span>
     </div>
     <div class="pulse">${ch.rateHistory.slice(-24).map(s=>`<i data-t="${s.t}" data-v="${s.v}" style="height:${Math.min(100,s.v*8)}%; opacity:${s.v>0?1:0.4}; background:${s.v>=8?'var(--spike)':'var(--muted)'}"></i>`).join('')}</div>
     <div class="pulseTip mono"></div>
@@ -1308,6 +1343,7 @@ function infoInnerHTML(ch){
 }
 
 function bindInfoListeners(info, ch){
+  info.querySelector('.moreBtn').addEventListener('click', ()=>{ ch.iconsOpen = !ch.iconsOpen; updateInfoPanels(); });
   info.querySelector('.close').addEventListener('click', ()=>{
     if(!confirm(`"${ch.channelName||ch.name}" 화면을 정말 끌까요?\n(목록에서 제거돼요)`)) return;
     removeChannel(ch.id);
@@ -1373,7 +1409,7 @@ function renderGrid(){
     tile.innerHTML = `
       <div class="vwrap" style="width:100%;height:100%;">${videoAreaHTML(ch)}</div>
       <div class="chatPeek${(chatPeekOn && !ch.peekOff)?' on':''}">${chatPeekHTML(ch)}</div>
-      <button class="shrinkBtn" title="축소">🗗</button>
+      <button class="shrinkBtn" title="축소">${ICON.shrink}</button>
       <a class="ytlink" href="https://www.youtube.com/watch?v=${ch.videoId}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="유튜브 앱/사이트에서 열기">▶</a>
     `;
     tile.addEventListener('click', (e)=>{
