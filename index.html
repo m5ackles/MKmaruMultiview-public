@@ -91,6 +91,9 @@
   #topbar{display:flex; align-items:center; gap:10px; padding:2px 4px 6px; flex-wrap:wrap;}
   #topbar .brand{font-weight:700; letter-spacing:.06em; font-size:13px; color:var(--muted);}
   #topbar .brand b{color:var(--text);}
+  #topbar .brand .by{font-weight:600; font-size:10.5px; letter-spacing:.02em; color:var(--signal); margin-left:4px; white-space:nowrap;}
+  html.is-phone #topbar .brand{line-height:1.15;}
+  html.is-phone #topbar .brand .by{display:block; margin:1px 0 0; font-size:9.5px;}
   #topbar .addbox{display:flex; gap:6px; margin-left:auto; flex:1 1 auto; min-width:0;}
   #broadcastModeBtn{
     background:var(--panel2); border:1px solid var(--line); color:var(--muted);
@@ -208,12 +211,17 @@
   .info .channelline{font-weight:700; font-size:11.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .info .videoline{font-weight:400; font-size:10.5px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-top:1px;}
   .info .close{cursor:pointer; opacity:.6; padding:0 3px; flex-shrink:0;}
-  /* 버튼 묶음: 기본은 접힘 → 채널 이름·제목이 가로폭을 다 씀 */
-  .info .ibtns{display:none; align-items:center; gap:2px; flex-shrink:0;}
-  .info .ibtns.open{display:inline-flex; animation:ibIn .15s ease;}
-  @keyframes ibIn{from{opacity:0; transform:translateX(8px);} to{opacity:1; transform:none;}}
-  .info .moreBtn{opacity:.7; padding:1px 3px; border-radius:5px;}
-  .info .moreBtn:hover{background:var(--panel2);}
+  /* 버튼 묶음 — PC: 이름 오른쪽에 한 줄로 */
+  .info .ibtns{display:inline-flex; align-items:center; gap:2px; flex-shrink:0;}
+  /* 폰(안드로이드 앱): 1줄 = 채널명 @아이디 | 제목, 2줄 = 버튼들 */
+  html.is-phone .info .infohead{flex-wrap:wrap; row-gap:5px;}
+  html.is-phone .info .titles{flex:1 1 100%; display:flex; align-items:baseline; gap:6px; min-width:0;}
+  html.is-phone .info .channelline{flex:0 1 auto; min-width:0; max-width:62%;}
+  html.is-phone .info .videoline{flex:1 1 0; min-width:0; margin-top:0;}
+  html.is-phone .info .videoline::before{content:'|'; color:var(--line2); margin-right:6px;}
+  html.is-phone .info .ibtns{flex:1 1 100%; justify-content:space-between; padding:2px 0; border-top:1px solid var(--line);}
+  html.is-phone .info .ibtns .ibtn, html.is-phone .info .ibtns .close{padding:4px 6px;}
+  html.is-phone .info .ibtns .ibtn svg{width:16px; height:16px;}
   .tile .shrinkBtn svg{width:15px; height:15px; display:block;}
   .info .close:hover{opacity:1; color:var(--danger);}
   .info .pulse{
@@ -314,7 +322,7 @@
 <div id="app">
   <div id="stage">
     <div id="topbar">
-      <div class="brand">MULTIVIEW <b>/ MONITOR</b></div>
+      <div class="brand">MULTIVIEW <b>/ MONITOR</b> <span class="by">by 멸콩마루</span></div>
       <button id="broadcastModeBtn">🔴 방송모드</button>
       <button id="checkAllBtn" title="등록된 채널 라이브 여부 전부 확인">📡 전체 확인</button>
       <button id="refreshVideosBtn" title="영상만 새로고침 (등록 목록은 그대로 유지)">🔄 새로고침</button>
@@ -546,6 +554,8 @@
 
 <script>
 const $ = s => document.querySelector(s);
+// 폰(안드로이드 앱) / PC 구분 — 화면 배치를 다르게 함
+document.documentElement.classList.add(typeof window.NativeBridge !== 'undefined' ? 'is-phone' : 'is-pc');
 // ---- 테마 ----
 const THEMES = [
   {id:'midnight', name:'미드나잇', bg:'#0B0E11', panel:'#1A1F26', accent:'#3ED598'},
@@ -1323,7 +1333,7 @@ function infoInnerHTML(ch){
         <div class="channelline">${ch.channelName?esc(ch.channelName):'채널명 확인중'}${ch.handle?` <span class="small">${esc(ch.handle)}</span>`:''}</div>
         <div class="videoline">${esc(ch.name)}</div>
       </div>
-      <span class="ibtns${ch.iconsOpen?' open':''}">
+      <span class="ibtns">
       <span class="ibtn pinBtn${ch.pinned?' on':''}" title="${ch.pinned?'고정 풀기':'맨 앞에 고정'}">${ch.pinned?ICON.pinOn:ICON.pin}</span>
       <span class="ibtn chatOnlyBtn${ch.chatOnly?' on':''}" title="${ch.chatOnly?'채팅만 보기 끄기':'채팅만 보기 (영상 흐리게)'}">${ICON.chat}</span>
       <span class="ibtn peekBtn${ch.peekOff?' off':''}" title="${ch.peekOff?'채팅 미리보기 켜기 (확대 시)':'채팅 미리보기 끄기 (확대 시)'}">${ch.peekOff?ICON.noteOff:ICON.note}</span>
@@ -1331,7 +1341,6 @@ function infoInnerHTML(ch){
       <span class="ibtn vidOff${ch.videoOff?' on':''}" title="${ch.videoOff?'화면 켜기':'화면 끄기'}">${ch.videoOff?ICON.play:ICON.power}</span>
       <span class="close">✕</span>
       </span>
-      <span class="ibtn moreBtn" title="${ch.iconsOpen?'버튼 접기':'버튼 펼치기'}">${ch.iconsOpen?ICON.chevR:ICON.chevL}</span>
     </div>
     <div class="pulse">${ch.rateHistory.slice(-24).map(s=>`<i data-t="${s.t}" data-v="${s.v}" style="height:${Math.min(100,s.v*8)}%; opacity:${s.v>0?1:0.4}; background:${s.v>=8?'var(--spike)':'var(--muted)'}"></i>`).join('')}</div>
     <div class="pulseTip mono"></div>
@@ -1343,7 +1352,6 @@ function infoInnerHTML(ch){
 }
 
 function bindInfoListeners(info, ch){
-  info.querySelector('.moreBtn').addEventListener('click', ()=>{ ch.iconsOpen = !ch.iconsOpen; updateInfoPanels(); });
   info.querySelector('.close').addEventListener('click', ()=>{
     if(!confirm(`"${ch.channelName||ch.name}" 화면을 정말 끌까요?\n(목록에서 제거돼요)`)) return;
     removeChannel(ch.id);
