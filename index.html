@@ -219,9 +219,11 @@
   html.is-phone .info .channelline{flex:0 1 auto; min-width:0; max-width:62%;}
   html.is-phone .info .videoline{flex:1 1 0; min-width:0; margin-top:0;}
   html.is-phone .info .videoline::before{content:'|'; color:var(--line2); margin-right:6px;}
-  html.is-phone .info .ibtns{flex:1 1 100%; justify-content:space-between; padding:2px 0; border-top:1px solid var(--line);}
-  html.is-phone .info .ibtns .ibtn, html.is-phone .info .ibtns .close{padding:4px 6px;}
+  html.is-phone .info .ibtns{flex:1 1 100%; width:100%; min-width:0; justify-content:space-between; gap:0; padding:2px 0 0; border-top:1px solid var(--line); overflow:hidden;}
+  /* 칸이 좁아도 카드 밖으로 안 나가게: 버튼이 칸 폭을 나눠 쓰고, 좁으면 같이 줄어듦 */
+  html.is-phone .info .ibtns .ibtn, html.is-phone .info .ibtns .close{flex:1 1 0; min-width:0; display:flex; justify-content:center; align-items:center; padding:5px 0; line-height:1;}
   html.is-phone .info .ibtns .ibtn svg{width:16px; height:16px;}
+  html.is-phone .info .ibtns .close{font-size:14px;}
   .tile .shrinkBtn svg{width:15px; height:15px; display:block;}
   .info .close:hover{opacity:1; color:var(--danger);}
   .info .pulse{
