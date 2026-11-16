@@ -306,6 +306,7 @@
   .preset span{flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .preset button{padding:2px 6px; font-size:11px;}
   #log{height:180px; flex-shrink:0; overflow:auto; padding:10px 14px; font-size:11.5px; display:flex; flex-direction:column-reverse; gap:4px;}
+  #tabLog #log{height:auto; flex:1 1 auto; min-height:0;}
   #log .entry a{color:inherit; text-decoration:underline dotted; text-underline-offset:2px;}
   #log .entry.kw{color:var(--kw); border-left-color:var(--kwLine);}
   #log .entry{color:var(--muted); border-left:2px solid var(--line); padding-left:7px;}
@@ -405,6 +406,7 @@
       <button class="tabBtn active" data-tab="live">현재방송</button>
       <button class="tabBtn" data-tab="chat">채팅<span class="badge" id="chatBadge"></span></button>
       <button class="tabBtn" data-tab="settings">설정</button>
+      <button class="tabBtn" data-tab="log">로그<span class="badge" id="logBadge"></span></button>
       <button id="collapseBtn" title="아래 패널 접기/펴기">▾</button>
     </div>
     <div id="panelBody">
@@ -413,14 +415,6 @@
           <h3>채널 상태 <span class="small">(🟢라이브 / ⚪오프라인)</span></h3>
           <div class="presetlist" id="subList"></div>
         </div>
-        <div class="dragHandle" id="logHandle" title="끌어서 채널상태/로그 높이 조절"></div>
-        <div class="sec" style="border-bottom:none; flex:0 0 auto; padding-bottom:4px;">
-          <h3>실시간 활동 로그
-            <button class="ghost" id="exportLogBtn" style="float:right; padding:2px 7px; font-size:10.5px;">로그 CSV</button>
-            <button class="ghost" id="exportRecordsBtn" style="float:right; padding:2px 7px; font-size:10.5px; margin-right:4px;" title="방송별 최고 시청자·급증 횟수 등">방송기록 CSV</button>
-          </h3>
-        </div>
-        <div id="log"></div>
       </div>
 
       <div class="tabPane" id="tabChat">
@@ -612,6 +606,16 @@
           <input type="file" id="importFileInput" accept="application/json" style="display:none">
           <div class="small">채널 등록 목록, 검색어, 즐겨찾기를 JSON 파일로 저장해두면, 저장공간이 날아가도 파일로 복원할 수 있어요. (API 키는 보안상 포함 안 됨)</div>
         </div>
+      </div>
+
+      <div class="tabPane" id="tabLog">
+        <div class="sec logHead" style="border-bottom:1px solid var(--line); flex:0 0 auto; padding-bottom:8px;">
+          <h3 style="margin:0;">실시간 활동 로그
+            <button class="ghost" id="exportLogBtn" style="float:right; padding:2px 7px; font-size:10.5px;">로그 CSV</button>
+            <button class="ghost" id="exportRecordsBtn" style="float:right; padding:2px 7px; font-size:10.5px; margin-right:4px;" title="방송별 최고 시청자·급증 횟수 등">방송기록 CSV</button>
+          </h3>
+        </div>
+        <div id="log"></div>
       </div>
     </div>
   </div>
@@ -1071,6 +1075,8 @@ $('#chatNotifyToggle').addEventListener('click', ()=>{
     else if('Notification' in window && Notification.permission==='default') Notification.requestPermission();
   }
 });
+// 로그 탭을 열면 안 읽은 수 지움
+document.querySelector('.tabBtn[data-tab=log]').addEventListener('click', ()=>{ logUnread = 0; $('#logBadge').textContent = ''; });
 // 채팅 탭을 열면 안 읽은 수 지우고 맨 아래로
 document.querySelector('.tabBtn[data-tab=chat]').addEventListener('click', ()=>{
   unread = 0; $('#chatBadge').textContent = '';
@@ -1196,8 +1202,6 @@ if(Native.has){
 
 // ---- 높이 조절: 영상 ↔ 아래 패널, 채널 상태 ↔ 로그 (끌어서 조절, 최소 높이 보장, 저장) ----
 const MIN_VIDEO_H = 140;   // 영상 영역 최소 (상단바 + 화면 한 줄 정도)
-const MIN_LIST_H = 84;     // 채널 상태 목록 최소 (2줄)
-const MIN_LOG_H = 66;      // 로그 최소 (3줄)
 function panelLimits(){
   const minP = $('#panelHandle').offsetHeight + $('#tabBar').offsetHeight + 120;  // 탭 + 내용 조금
   const maxP = window.innerHeight - $('#topbar').offsetHeight - MIN_VIDEO_H;
@@ -1209,23 +1213,8 @@ function setPanelH(h){
   $('#bottomPanel').style.height = h + 'px';
   return h;
 }
-function logMax(){
-  const body = $('#panelBody').clientHeight;
-  const logHead = $('#logHandle').offsetHeight + $('#logHandle').nextElementSibling.offsetHeight;
-  const listHead = 46; // 채널 상태 제목 + 여백
-  return Math.max(MIN_LOG_H, body - logHead - listHead - MIN_LIST_H);
-}
-function setLogH(h){
-  h = Math.round(Math.min(logMax(), Math.max(MIN_LOG_H, h)));
-  $('#log').style.height = h + 'px';
-  return h;
-}
-// 로그 손잡이용: 목록이 최소 높이면 그만큼 아래 패널을 키워서 같이 밀어 올림
-function setLogHPush(h){
-  const over = h - logMax();
-  if(over > 0) setPanelH($('#bottomPanel').offsetHeight + over);
-  return setLogH(h);
-}
+// 로그는 별도 탭이라 높이 조절 필요 없음 (예전 호출과 호환용)
+function setLogH(){ return 0; }
 // dir: -1 = 위로 끌면 커짐(손잡이 아래쪽 칸), +1 = 아래로 끌면 커짐(손잡이 위쪽 칸)
 function makeResizer(handle, getH, setH, key, dir=-1){
   handle.addEventListener('pointerdown', e=>{
@@ -1270,7 +1259,6 @@ function setTermsH(h){
 }
 // 막대를 아래로 끌면 검색어 목록이 커지고 결과가 작아짐
 makeResizer($('#termHandle'), ()=> $('#termBox').offsetHeight, setTermsH, 'mvm_termsH', +1);
-makeResizer($('#logHandle'), ()=> $('#log').offsetHeight, setLogHPush, 'mvm_logH');
 function restoreHeights(){
   const ph = parseInt(localStorage.getItem('mvm_panelH'));
   setPanelH(ph || Math.round(window.innerHeight*0.46));
@@ -1772,6 +1760,7 @@ function stopRotation(){ if(rotationTimer){ clearInterval(rotationTimer); rotati
 // ---- log ----
 let logRows = [];
 // kind: true/'spike' = 주황(급증·오류), 'kw' = 보라(키워드/사용자). href 가 있으면 그 줄을 누르면 해당 순간으로 이동
+var logUnread = 0;   // var: 위쪽 코드에서 log() 를 먼저 불러도 오류 안 나게
 function log(msg, kind=false, href=null){
   const t = new Date().toLocaleTimeString('ko-KR',{hour12:false});
   logRows.push([t, msg, href||'']);
@@ -1784,6 +1773,7 @@ function log(msg, kind=false, href=null){
     div.appendChild(a);
   } else div.appendChild(document.createTextNode(msg));   // 채팅 내용이 HTML 로 실행되지 않게 글자로만 넣음
   logEl.prepend(div);
+  if(kind && !$('#tabLog').classList.contains('active')){ logUnread++; $('#logBadge').textContent = logUnread>99?'99+':logUnread; }
   while(logEl.children.length > 500) logEl.lastElementChild.remove();
 }
 $('#exportLogBtn').addEventListener('click', ()=>{
