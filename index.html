@@ -6,18 +6,79 @@
 <title>MULTIVIEW / MONITOR</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-  :root{
-    --bg:#0B0E11;
-    --panel:#14181D;
-    --panel2:#181D23;
-    --line:#232830;
-    --text:#D7DCE1;
-    --muted:#7A8391;
-    --signal:#3ED598;
-    --spike:#F5A623;
-    --danger:#E5484D;
+  /* ===== 테마 (설정 탭 맨 위에서 선택) ===== */
+  :root, :root[data-theme="midnight"]{
+    --bg:#0B0E11; --panel:#14181D; --panel2:#1A1F26; --card:#12161B;
+    --line:#232830; --line2:#343B45; --text:#D7DCE1; --muted:#7A8391; --muted2:#565d66;
+    --signal:#3ED598; --onAccent:#06110C; --spike:#F5A623; --danger:#E5484D;
+    --toggleOff:#2A3038; --knob:#8b95a1; --kw:#c4b5fd; --kwLine:#a78bfa; --chL:62%;
+    --shadow:0 6px 18px -10px rgba(0,0,0,.7);
+  }
+  :root[data-theme="black"]{
+    --bg:#000000; --panel:#0A0A0A; --panel2:#151515; --card:#0D0D0D;
+    --line:#1F1F1F; --line2:#333333; --text:#ECECEC; --muted:#8A8A8A; --muted2:#5A5A5A;
+    --signal:#22D3EE; --onAccent:#00191D; --spike:#FBBF24; --danger:#EF4444;
+    --toggleOff:#262626; --knob:#8A8A8A; --kw:#c4b5fd; --kwLine:#a78bfa; --chL:62%;
+    --shadow:0 6px 18px -10px rgba(0,0,0,.9);
+  }
+  :root[data-theme="blue"]{
+    --bg:#0B1220; --panel:#111A2E; --panel2:#18243F; --card:#0F1729;
+    --line:#22304D; --line2:#34476E; --text:#DBE4F3; --muted:#7F8FAE; --muted2:#56658A;
+    --signal:#4F8CFF; --onAccent:#FFFFFF; --spike:#FFB547; --danger:#FF5C6C;
+    --toggleOff:#22304D; --knob:#8091B5; --kw:#c4b5fd; --kwLine:#a78bfa; --chL:64%;
+    --shadow:0 6px 18px -10px rgba(0,0,10,.8);
+  }
+  :root[data-theme="purple"]{
+    --bg:#120D1A; --panel:#1A1324; --panel2:#241A33; --card:#171020;
+    --line:#2F2441; --line2:#46365F; --text:#E9E0FA; --muted:#9B8DB5; --muted2:#6C5F86;
+    --signal:#B48CFF; --onAccent:#1A0D2E; --spike:#FFB86B; --danger:#FF6B8B;
+    --toggleOff:#2F2441; --knob:#9B8DB5; --kw:#F9A8D4; --kwLine:#F472B6; --chL:66%;
+    --shadow:0 6px 18px -10px rgba(8,0,20,.8);
+  }
+  :root[data-theme="light"]{
+    --bg:#EEF1F5; --panel:#FFFFFF; --panel2:#F3F5F8; --card:#FFFFFF;
+    --line:#DDE2EA; --line2:#C3CBD6; --text:#1E2530; --muted:#6B7685; --muted2:#9AA4B2;
+    --signal:#12A36B; --onAccent:#FFFFFF; --spike:#D9822B; --danger:#D93B42;
+    --toggleOff:#CFD6DF; --knob:#FFFFFF; --kw:#7C3AED; --kwLine:#8B5CF6; --chL:40%;
+    --shadow:0 6px 16px -10px rgba(30,40,60,.35);
   }
   *{box-sizing:border-box;}
+  /* ---- 전체 다듬기 ---- */
+  *{scrollbar-width:thin; scrollbar-color:var(--line2) transparent;}
+  ::-webkit-scrollbar{width:8px; height:8px;}
+  ::-webkit-scrollbar-thumb{background:var(--line2); border-radius:8px; border:2px solid transparent; background-clip:padding-box;}
+  ::-webkit-scrollbar-track{background:transparent;}
+  body{-webkit-font-smoothing:antialiased; transition:background .2s ease;}
+  button, .toggle, .tile, .info, .preset, input, select{transition:border-color .15s ease, background .15s ease, color .15s ease, box-shadow .15s ease;}
+  input[type=text]:focus, input[type=password]:focus, select:focus{box-shadow:0 0 0 3px color-mix(in srgb, var(--signal) 22%, transparent);}
+  .info{box-shadow:var(--shadow);}
+  .tile{box-shadow:var(--shadow);}
+  #tabBar{background:var(--panel);}
+  .tabBtn{position:relative;}
+  .tabBtn.active{background:color-mix(in srgb, var(--signal) 7%, transparent);}
+
+  /* ---- 설정 탭: 분류는 카드로, 항목마다 얇은 줄 ---- */
+  #tabSettings{background:var(--bg); padding:10px 10px 4px; gap:10px;}
+  #tabSettings .sec{background:var(--card); border:1px solid var(--line) !important; border-radius:12px;
+    padding:4px 14px 6px; box-shadow:var(--shadow); flex-shrink:0;}
+  #tabSettings .sec > h3{display:flex; align-items:center; gap:7px; flex-wrap:wrap; margin:0 -14px 2px; padding:11px 14px 10px;
+    font-size:12.5px; letter-spacing:.04em; color:var(--text); text-transform:none;
+    border-bottom:2px solid var(--line); }
+  #tabSettings .sec > h3::before{content:''; width:4px; height:14px; border-radius:2px; background:var(--signal); flex-shrink:0;}
+  #tabSettings .sec > h3 .small{font-weight:500; letter-spacing:0;}
+  #tabSettings .sec > :not(h3){margin:0; padding:10px 0; border-top:1px solid var(--line);}
+  #tabSettings .sec > h3 + *{border-top:none;}
+  #tabSettings .sec > .small{font-size:11px; line-height:1.55;}
+  #tabSettings .sec > .presetlist{padding:8px 0;}
+  #tabSettings .sec > .presetlist:empty{display:none;}
+  #tabSettings .row label{line-height:1.45;}
+  #tabSettings .row label .small{display:inline-block; margin-top:2px;}
+  /* 테마 고르기 */
+  .themeGrid{display:grid; grid-template-columns:repeat(5, minmax(0,1fr)); gap:8px;}
+  .themeBtn{display:flex; flex-direction:column; align-items:center; gap:6px; padding:8px 4px 7px; border-radius:10px; background:var(--panel2); font-size:11.5px; color:var(--text);}
+  .themeBtn .sw{width:100%; height:30px; border-radius:7px; border:1px solid rgba(128,128,128,.35); position:relative; overflow:hidden;}
+  .themeBtn .sw i{position:absolute; right:6px; bottom:6px; width:12px; height:12px; border-radius:50%;}
+  .themeBtn.active{border-color:var(--signal); box-shadow:0 0 0 2px color-mix(in srgb, var(--signal) 35%, transparent);}
   html{height:100%;}
   body{
     margin:0; background:var(--bg); color:var(--text);
@@ -35,7 +96,7 @@
     background:var(--panel2); border:1px solid var(--line); color:var(--muted);
     border-radius:20px; padding:6px 12px; font-size:11.5px; font-weight:600; cursor:pointer;
   }
-  #broadcastModeBtn.on{ background:var(--danger); border-color:var(--danger); color:#2a0505; }
+  #broadcastModeBtn.on{ background:var(--danger); border-color:var(--danger); color:#fff; }
   #refreshVideosBtn{
     background:var(--panel2); border:1px solid var(--line); color:var(--text);
     border-radius:20px; padding:6px 12px; font-size:11.5px; font-weight:600; cursor:pointer;
@@ -60,8 +121,8 @@
   .cell.dragging{opacity:.45;}
   .cell.dropTarget .tile{outline:2px dashed var(--signal); outline-offset:2px;}
   /* 키워드/사용자 감지 반짝임 */
-  .tile.kwhit{border-color:#a78bfa; animation:kwflash .7s ease-in-out 5;}
-  @keyframes kwflash{50%{box-shadow:0 0 0 2px #a78bfa, 0 0 24px -2px #a78bfa;}}
+  .tile.kwhit{border-color:var(--kwLine); animation:kwflash .7s ease-in-out 5;}
+  @keyframes kwflash{50%{box-shadow:0 0 0 2px var(--kwLine), 0 0 24px -2px var(--kwLine);}}
   /* 확대 화면 채팅 미리보기 */
   .chatPeek{position:absolute; left:0; right:0; bottom:0; z-index:3; pointer-events:none; display:none;
     padding:18px 44px 8px 10px; font-size:12px; line-height:1.4; color:#fff;
@@ -78,7 +139,7 @@
   .chatPeek .hit{color:#d8c8ff;}
   /* 높이 조절 손잡이 */
   .dragHandle{flex-shrink:0; height:16px; display:flex; align-items:center; justify-content:center; cursor:row-resize; touch-action:none; background:var(--panel); border-top:1px solid var(--line);}
-  .dragHandle::before{content:''; width:46px; height:4px; border-radius:2px; background:#3a4048;}
+  .dragHandle::before{content:''; width:46px; height:4px; border-radius:2px; background:var(--line2);}
   .dragHandle.active::before, .dragHandle:hover::before{background:var(--signal);}
   input[type=text], input[type=password]{
     background:var(--panel2); border:1px solid var(--line); color:var(--text);
@@ -89,9 +150,10 @@
     background:var(--panel2); border:1px solid var(--line); color:var(--text);
     border-radius:6px; padding:7px 11px; font-size:12.5px; cursor:pointer;
   }
-  button:hover{border-color:#3a4048;}
+  button:hover{border-color:var(--line2);}
   button:disabled{opacity:.5; cursor:default;}
-  button.primary{background:var(--signal); color:#06110C; border-color:var(--signal); font-weight:600;}
+  button.primary{background:var(--signal); color:var(--onAccent); border-color:var(--signal); font-weight:600;}
+  button.primary:hover{filter:brightness(1.08);}
   button.warn{background:var(--spike); color:#241a02; border-color:var(--spike); font-weight:600;}
   button.ghost{background:transparent;}
   #grid{
@@ -126,7 +188,7 @@
     align-items:center; justify-content:center; font-size:13px; color:var(--text); cursor:pointer;
   }
   .cell.enlarged .tile .shrinkBtn{display:flex;}
-  .cell.enlarged .tile .shrinkBtn:active{background:var(--signal); color:#06110C;}
+  .cell.enlarged .tile .shrinkBtn:active{background:var(--signal); color:var(--onAccent);}
   .tile .ytlink{
     position:absolute; right:6px; bottom:6px; z-index:4;
     width:30px; height:30px; border-radius:50%;
@@ -134,7 +196,9 @@
     display:flex; align-items:center; justify-content:center;
     font-size:14px; text-decoration:none; color:var(--text);
   }
-  .tile .ytlink:active{background:var(--signal); color:#06110C;}
+  .tile .ytlink:active{background:var(--signal); color:var(--onAccent);}
+  /* 영상 위에 뜨는 버튼은 테마와 상관없이 흰색 */
+  .tile .ytlink, .tile .shrinkBtn{color:#fff; border-color:rgba(255,255,255,.18);}
   .info{
     background:var(--panel); border:1px solid var(--line); border-radius:8px;
     padding:7px 8px; font-size:10.5px; position:relative;
@@ -197,7 +261,7 @@
   #chatFeed .fTerm{margin-left:auto; flex-shrink:0; font-size:10px; border:1px solid var(--line); border-radius:4px; padding:0 4px;}
   #chatFeed .fGo{flex-shrink:0; color:var(--muted); text-decoration:none; padding:0 2px;}
   #chatFeed .fMsg{margin-top:2px; line-height:1.45; word-break:break-all;}
-  #chatFeed mark{background:rgba(167,139,250,.38); color:#fff; border-radius:2px; padding:0 1px;}
+  #chatFeed mark{background:color-mix(in srgb, var(--kwLine) 40%, transparent); color:var(--text); border-radius:2px; padding:0 1px;}
   #tabChat .chatForm{display:flex; gap:6px; padding:8px 14px; border-top:1px solid var(--line); flex-shrink:0;}
   #tabChat .chatForm input{flex:1; min-width:0;}
   #collapseBtn{ width:38px; flex-shrink:0; background:transparent; border:none; color:var(--muted); border-radius:0; font-size:14px;}
@@ -211,10 +275,10 @@
   .sec h3{margin:0 0 8px; font-size:11px; letter-spacing:.08em; color:var(--muted); font-weight:700; text-transform:uppercase;}
   .row{display:flex; align-items:center; gap:8px; margin-bottom:8px;}
   .row label{font-size:12px; flex:1; color:var(--text);}
-  .toggle{position:relative; width:36px; height:20px; background:#252b32; border-radius:20px; cursor:pointer; flex-shrink:0; transition:background .2s;}
-  .toggle::after{content:''; position:absolute; width:16px; height:16px; background:#8b95a1; border-radius:50%; top:2px; left:2px; transition:.2s;}
+  .toggle{position:relative; width:36px; height:20px; background:var(--toggleOff); border-radius:20px; cursor:pointer; flex-shrink:0; transition:background .2s;}
+  .toggle::after{content:''; position:absolute; width:16px; height:16px; background:var(--knob); border-radius:50%; box-shadow:0 1px 2px rgba(0,0,0,.3); top:2px; left:2px; transition:.2s;}
   .toggle.on{background:var(--signal);}
-  .toggle.on::after{left:18px; background:#06110C;}
+  .toggle.on::after{left:18px; background:var(--onAccent);}
   .presetlist{display:flex; flex-direction:column; gap:5px; max-height:120px; overflow:auto;}
   #subList{ flex:1; min-height:0; max-height:none; }
   .preset{
@@ -225,10 +289,10 @@
   .preset button{padding:2px 6px; font-size:11px;}
   #log{height:180px; flex-shrink:0; overflow:auto; padding:10px 14px; font-size:11.5px; display:flex; flex-direction:column-reverse; gap:4px;}
   #log .entry a{color:inherit; text-decoration:underline dotted; text-underline-offset:2px;}
-  #log .entry.kw{color:#c4b5fd; border-left-color:#a78bfa;}
+  #log .entry.kw{color:var(--kw); border-left-color:var(--kwLine);}
   #log .entry{color:var(--muted); border-left:2px solid var(--line); padding-left:7px;}
   #log .entry.spike{color:var(--spike); border-left-color:var(--spike);}
-  #log .entry .t{color:#565d66; margin-right:5px;}
+  #log .entry .t{color:var(--muted2); margin-right:5px;}
   .small{font-size:11px; color:var(--muted);}
   select{background:var(--panel2); border:1px solid var(--line); color:var(--text); border-radius:6px; padding:6px 8px; font-size:12px;}
   #keyStatus{font-size:11px; margin-top:4px;}
@@ -301,7 +365,12 @@
 
       <div class="tabPane" id="tabSettings">
         <div class="sec">
-          <h3>모드</h3>
+          <h3>🎨 테마</h3>
+          <div class="themeGrid" id="themeGrid"></div>
+        </div>
+
+        <div class="sec">
+          <h3>🖥️ 화면 / 모드</h3>
           <div class="row">
             <label>자동 그리드 재배치<br><span class="small">활발한 화면이 자동으로 커짐</span></label>
             <div class="toggle" id="autoGridToggle"></div>
@@ -344,7 +413,7 @@
         </div>
 
         <div class="sec">
-          <h3>보기 / 알림</h3>
+          <h3>👁️ 보기 / 알림</h3>
           <div class="row">
             <label>확대 화면 채팅 미리보기<br><span class="small">크게 띄운 화면 아래에 최근 채팅 몇 줄 표시</span></label>
             <div class="toggle" id="chatPeekToggle"></div>
@@ -387,7 +456,7 @@
         </div>
 
         <div class="sec">
-          <h3>채널 자동감지 등록 <span class="small">(방송 시작→자동추가, 끝나면→자동제거)</span></h3>
+          <h3>📡 채널 자동감지 등록 <span class="small">(방송 시작→자동추가, 끝나면→자동제거)</span></h3>
           <div class="row">
             <input type="text" id="subInput" placeholder="채널 URL, @핸들, 채널ID" style="flex:1">
             <button id="addSubBtn">등록</button>
@@ -406,7 +475,7 @@
         </div>
 
         <div class="sec">
-          <h3>검색어 / 해시태그로 1회 추가</h3>
+          <h3>🔎 검색어 / 해시태그로 1회 추가</h3>
           <div class="row">
             <input type="text" id="searchTermInput" placeholder="예: 올림픽공원, #항공직찍" style="flex:1">
             <button id="addTermBtn">추가</button>
@@ -419,7 +488,7 @@
         </div>
 
         <div class="sec" style="border-bottom:none;">
-          <h3>즐겨찾기 프리셋</h3>
+          <h3>⭐ 즐겨찾기 프리셋</h3>
           <div class="row">
             <input type="text" id="presetName" placeholder="프리셋 이름" style="flex:1">
             <button id="savePresetBtn">저장</button>
@@ -428,7 +497,7 @@
         </div>
 
         <div class="sec">
-          <h3>방송모드 대체 이미지 <span class="small">(저작권 회피용)</span></h3>
+          <h3>🖼️ 방송모드 대체 이미지 <span class="small">(저작권 회피용)</span></h3>
           <div class="row">
             <input type="text" id="subImgUrl" placeholder="이미지 URL 붙여넣기" style="flex:1">
             <button id="setSubImgUrlBtn">적용</button>
@@ -447,7 +516,7 @@
         </div>
 
         <div class="sec" id="appInfoSec" style="display:none;">
-          <h3>앱 정보 / 사용 승인</h3>
+          <h3>ℹ️ 앱 정보 / 사용 승인</h3>
           <div class="small mono" id="appInfoText" style="line-height:1.6;"></div>
           <div class="row" style="margin-top:6px;">
             <button id="shareIdBtn" style="flex:1;">내 사용자 ID 보내기</button>
@@ -455,7 +524,7 @@
         </div>
 
         <div class="sec" style="border-bottom:none;">
-          <h3>설정 백업 / 복원 <span class="small">(브라우저 저장공간이 초기화될 때 대비)</span></h3>
+          <h3>💾 설정 백업 / 복원 <span class="small">(브라우저 저장공간이 초기화될 때 대비)</span></h3>
           <div class="row">
             <button id="exportSettingsBtn" style="flex:1;">내보내기 (파일로 저장)</button>
             <button id="importSettingsBtn" style="flex:1;">가져오기</button>
@@ -470,6 +539,31 @@
 
 <script>
 const $ = s => document.querySelector(s);
+// ---- 테마 ----
+const THEMES = [
+  {id:'midnight', name:'미드나잇', bg:'#0B0E11', panel:'#1A1F26', accent:'#3ED598'},
+  {id:'black',    name:'블랙',     bg:'#000000', panel:'#151515', accent:'#22D3EE'},
+  {id:'blue',     name:'딥블루',   bg:'#0B1220', panel:'#18243F', accent:'#4F8CFF'},
+  {id:'purple',   name:'퍼플',     bg:'#120D1A', panel:'#241A33', accent:'#B48CFF'},
+  {id:'light',    name:'라이트',   bg:'#EEF1F5', panel:'#FFFFFF', accent:'#12A36B'},
+];
+function applyTheme(id){
+  if(!THEMES.some(t=>t.id===id)) id = 'midnight';
+  document.documentElement.dataset.theme = id;
+  try{ localStorage.setItem('mvm_theme', id); }catch(e){}
+  document.querySelectorAll('.themeBtn').forEach(b=> b.classList.toggle('active', b.dataset.id===id));
+}
+applyTheme(localStorage.getItem('mvm_theme') || 'midnight');
+(function(){
+  const g = $('#themeGrid'); if(!g) return;
+  THEMES.forEach(t=>{
+    const b = document.createElement('button'); b.className='themeBtn'; b.dataset.id=t.id; b.type='button';
+    b.innerHTML = `<span class="sw" style="background:linear-gradient(135deg, ${t.bg} 0 55%, ${t.panel} 55%)"><i style="background:${t.accent}"></i></span>${t.name}`;
+    b.addEventListener('click', ()=> applyTheme(t.id));
+    g.appendChild(b);
+  });
+  applyTheme(document.documentElement.dataset.theme);
+})();
 const grid = $('#grid');
 const logEl = $('#log');
 
@@ -826,7 +920,7 @@ function termMatch(term, author, text){
   return term.type==='user' ? u : term.type==='msg' ? c : (u || c);
 }
 // 채널마다 고정 색 (이름으로 색 정함)
-function chColor(name){ let h=0; for(const c of String(name)) h=(h*31 + c.charCodeAt(0))%360; return `hsl(${h},65%,62%)`; }
+function chColor(name){ let h=0; for(const c of String(name)) h=(h*31 + c.charCodeAt(0))%360; return `hsl(${h},65%,var(--chL,62%))`; }
 function highlight(text, q){
   const t = esc(text); if(!q) return t;
   const re = new RegExp(esc(q).replace(/[.*+?^${}()|[\]\\]/g,'\\$&'), 'gi');
