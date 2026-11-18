@@ -105,6 +105,7 @@
     background:var(--panel2); border:1px solid var(--line); color:var(--text);
     border-radius:20px; padding:6px 12px; font-size:11.5px; font-weight:600; cursor:pointer;
   }
+  #unmuteAllBtn{background:color-mix(in srgb, var(--danger) 14%, transparent); color:var(--danger); border:1px solid color-mix(in srgb, var(--danger) 50%, transparent); border-radius:20px; padding:6px 12px; font-size:11.5px; font-weight:600;}
   #refreshVideosBtn:active{ border-color:var(--signal); color:var(--signal); }
   #checkAllBtn{
     background:var(--panel2); border:1px solid var(--line); color:var(--text);
@@ -392,6 +393,7 @@
       <button id="broadcastModeBtn">🔴 방송모드</button>
       <button id="checkAllBtn" title="등록된 채널 라이브 여부 전부 확인">📡 전체 확인</button>
       <button id="refreshVideosBtn" title="영상만 새로고침 (등록 목록은 그대로 유지)">🔄 새로고침</button>
+      <button id="unmuteAllBtn" style="display:none" title="유튜브로 열어서 꺼둔 소리를 다시 켜기">🔇 소리 꺼짐 · 켜기</button>
       <div class="addbox">
         <input type="text" id="addInput" placeholder="유튜브 라이브 URL 또는 영상ID" style="flex:1; min-width:0;">
         <button class="primary" id="addBtn">추가</button>
@@ -861,7 +863,20 @@ const msgText = m => !m ? '' : (m.simpleText ?? (m.runs||[]).map(r=> r.text ?? (
 
 // ---- 소리 화면 고르기: 고른 화면이 있으면 그것만, 없으면 확대 화면만 소리 (영상 다시 로딩 없이) ----
 let soundId = null;
-const isAudible = ch => soundId ? ch.id===soundId : !!ch.enlarged;   // 채팅만 보기여도 소리는 그대로
+let muteAll = false;   // 유튜브로 열었을 때 이중으로 안 들리게 전체 음소거
+const isAudible = ch => !muteAll && (soundId ? ch.id===soundId : !!ch.enlarged);   // 채팅만 보기여도 소리는 그대로
+function setMuteAll(on){
+  muteAll = on;
+  $('#unmuteAllBtn').style.display = on ? '' : 'none';
+  applyAudio(); updateInfoPanels();
+}
+// ▶ 유튜브로 열기 / 채팅탭·로그의 "그 순간 보기" 링크 → 멀티뷰 소리 전부 끔
+document.addEventListener('click', e=>{
+  const a = e.target.closest('a[href*="youtube.com/watch"]');
+  if(!a || muteAll) return;
+  setMuteAll(true);
+  log('유튜브로 열어서 멀티뷰 소리를 껐어요 (위의 🔇 버튼이나 화면을 누르면 다시 켜짐)');
+}, true);
 // 영상이 막 로딩된 직후엔 명령을 못 받으므로 몇 번 나눠서 소리 켜기/끄기 명령 보냄
 function kickAudio(){ [800, 2000, 4000].forEach(ms=> setTimeout(applyAudio, ms)); }
 function applyAudio(){
@@ -875,6 +890,8 @@ function applyAudio(){
     }catch(e){}
   });
 }
+
+$('#unmuteAllBtn').addEventListener('click', ()=>{ setMuteAll(false); kickAudio(); });
 
 // ---- 앱이 뒤로 갈 때 / 돌아올 때 (앱에서 호출) ----
 // 뒤로 가면: 소리 나는 화면만 계속, 나머지는 잠시 멈춤 (데이터·배터리 절약, 채팅 감시는 계속)
@@ -1418,7 +1435,7 @@ function bindInfoListeners(info, ch){
   info.querySelector('.chatOnlyBtn').addEventListener('click', ()=> toggleChatOnly(ch));
   info.querySelector('.peekBtn').addEventListener('click', ()=>{ ch.peekOff = !ch.peekOff; updateChatPeeks(); updateInfoPanels(); });
   info.querySelector('.pinBtn').addEventListener('click', ()=>{ ch.pinned = !ch.pinned; relayout(); });
-  info.querySelector('.soundBtn').addEventListener('click', ()=>{ soundId = (soundId===ch.id) ? null : ch.id; applyAudio(); updateInfoPanels(); });
+  info.querySelector('.soundBtn').addEventListener('click', ()=>{ if(muteAll){ muteAll = false; $('#unmuteAllBtn').style.display = 'none'; } soundId = (soundId===ch.id) ? null : ch.id; applyAudio(); updateInfoPanels(); });
   info.querySelector('.pulse').addEventListener('click', (e)=>{
     const pulseEl = e.currentTarget;
     const rect = pulseEl.getBoundingClientRect();
@@ -1511,6 +1528,7 @@ function renderGrid(){
       if(ch.enlarged) return; // already enlarged: let taps reach the player (play/seek bar) instead of toggling
       channels.forEach(c=> c.enlarged = (c.id===ch.id));
       soundId = null;          // 탭해서 확대한 화면 소리가 나오게
+      if(muteAll){ muteAll = false; $('#unmuteAllBtn').style.display = 'none'; }
       relayout();              // 영상은 다시 불러오지 않고 칸만 바꿈 → 재생 중인 플레이어에 바로 소리 켜기
       kickAudio();
     });
