@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="referrer" content="strict-origin-when-cross-origin">
-<title>MULTIVIEW / MONITOR</title>
+<title>MULTIVIEW / MONITOR · by 멸콩마루</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2064%2064'%3E%3Crect%20width='64'%20height='64'%20rx='14'%20fill='%230B0E11'/%3E%3Crect%20x='10'%20y='12'%20width='20'%20height='16'%20rx='3'%20fill='%233ED598'/%3E%3Crect%20x='34'%20y='12'%20width='20'%20height='16'%20rx='3'%20fill='%23F5A623'/%3E%3Crect%20x='10'%20y='32'%20width='20'%20height='16'%20rx='3'%20fill='%234F8CFF'/%3E%3Crect%20x='34'%20y='32'%20width='20'%20height='16'%20rx='3'%20fill='%23B48CFF'/%3E%3Crect%20x='14'%20y='52'%20width='36'%20height='3'%20rx='1.5'%20fill='%237A8391'/%3E%3C/svg%3E">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
   /* ===== 테마 (설정 탭 맨 위에서 선택) ===== */
@@ -395,7 +396,11 @@
       <button id="refreshVideosBtn" title="영상만 새로고침 (등록 목록은 그대로 유지)">🔄 새로고침</button>
       <button id="unmuteAllBtn" style="display:none" title="유튜브로 열어서 꺼둔 소리를 다시 켜기">🔇 소리 꺼짐 · 켜기</button>
       <div class="addbox">
-        <input type="text" id="addInput" placeholder="유튜브 라이브 URL 또는 영상ID" style="flex:1; min-width:0;">
+        <select id="addMode" title="추가 방식" style="flex:0 0 auto; max-width:46%;">
+          <option value="sub">채널 자동감지 등록</option>
+          <option value="url">라이브 URL / 영상ID</option>
+        </select>
+        <input type="text" id="addInput" placeholder="채널 URL, @핸들, 채널ID" style="flex:1; min-width:0;">
         <button class="primary" id="addBtn">추가</button>
       </div>
     </div>
@@ -691,6 +696,11 @@ const Native = (()=>{
 
 // PC용 실행기(multiview_pc.py)로 열었을 때: 로컬 프록시가 대신 요청
 const LOCAL_PROXY = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+// PC 실행기로 연 앱 창(주소창 없음)이면 화면 크기에 꽉 차게 맞춤 (크롬이 이미 켜져 있어도)
+if(LOCAL_PROXY && window.locationbar && !window.locationbar.visible){
+  const fill = ()=>{ try{ window.moveTo(screen.availLeft||0, screen.availTop||0); window.resizeTo(screen.availWidth, screen.availHeight); }catch(e){} };
+  fill(); setTimeout(fill, 300);
+}
 
 async function httpReq(url, method='GET', headers={}, body=null){
   if(Native.has) return Native.call({type:'http', url, method, headers, body});
@@ -873,7 +883,23 @@ function setMuteAll(on){
 // ▶ 유튜브로 열기 / 채팅탭·로그의 "그 순간 보기" 링크 → 멀티뷰 소리 전부 끔
 document.addEventListener('click', e=>{
   const a = e.target.closest('a[href*="youtube.com/watch"]');
-  if(!a || muteAll) return;
+  if(!a) return;
+  // PC: 평소 크롬(로그인 그대로)의 새 창으로 열기 — 실행기가 없을 때만 팝업
+  if(!Native.has){
+    e.preventDefault(); e.stopPropagation();
+    if(LOCAL_PROXY){
+      const href = a.href;
+      fetch('/__open', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({url:href})})
+        .then(r=>{ if(!r.ok) throw 0; })
+        .catch(()=>{ log('⚠ 유튜브 창을 못 열었어요 — 검은 창(실행기)을 껐다가 멀티뷰_실행.bat 을 다시 실행해주세요'); alert('검은 창(실행기)을 껐다가 멀티뷰_실행.bat 을 다시 실행해주세요.\n(새 실행기여야 평소 크롬으로 열려요)'); });
+    } else {
+    const w = Math.min(1280, screen.availWidth-80), h = Math.min(760, screen.availHeight-80);
+    const l = (screen.availLeft||0) + Math.round((screen.availWidth-w)/2), t = (screen.availTop||0) + Math.round((screen.availHeight-h)/2);
+    const win = window.open(a.href, 'mvyt_'+Date.now(), `popup=yes,width=${w},height=${h},left=${l},top=${t}`);
+    if(!win) window.open(a.href, '_blank');
+    }
+  }
+  if(muteAll) return;
   setMuteAll(true);
   log('유튜브로 열어서 멀티뷰 소리를 껐어요 (위의 🔇 버튼이나 화면을 누르면 다시 켜짐)');
 }, true);
@@ -1387,7 +1413,20 @@ function removeChannel(id){
   renderGrid();
 }
 
+// 메인 추가칸: 1순위 채널 자동감지 등록(기본값) / 2순위 라이브 URL
+const ADD_PH = {sub:'채널 URL, @핸들, 채널ID', url:'유튜브 라이브 URL 또는 영상ID'};
+(()=>{ let m='sub'; try{ m = localStorage.getItem('mvm_addmode')||'sub'; }catch(e){}
+  if(!ADD_PH[m]) m='sub'; $('#addMode').value=m; $('#addInput').placeholder=ADD_PH[m]; })();
+$('#addMode').addEventListener('change', ()=>{
+  const m=$('#addMode').value; $('#addInput').placeholder=ADD_PH[m];
+  try{ localStorage.setItem('mvm_addmode', m); }catch(e){}
+});
 $('#addBtn').addEventListener('click', ()=>{
+  if($('#addMode').value==='sub'){
+    const t=$('#addInput').value.trim(); if(!t) return;
+    $('#subInput').value=t; $('#addSubBtn').click();   // 설정탭의 "채널 자동감지 등록"과 똑같이 처리
+    $('#addInput').value=''; return;
+  }
   const v = extractVideoId($('#addInput').value);
   if(!v){ alert('유효한 유튜브 라이브 URL/ID를 넣어주세요'); return; }
   addChannel(v);
@@ -2075,12 +2114,16 @@ $('#exportSettingsBtn').addEventListener('click', ()=>{
     subs: JSON.parse(localStorage.getItem('mvm_subs')||'[]'),
     terms: JSON.parse(localStorage.getItem('mvm_terms')||'[]'),
     presets: JSON.parse(localStorage.getItem('mvm_presets')||'{}'),
-    chatTerms: chatTerms.map(({t,type,alarm})=>({t,type,alarm}))
+    chatTerms: chatTerms.map(({t,type,alarm})=>({t,type,alarm})),
+    // 테마·화면 설정도 같이 (새 창/새 폰으로 옮길 때 그대로)
+    ui: Object.fromEntries(UI_KEYS.map(k=>[k, localStorage.getItem(k)]).filter(([,v])=> v!==null))
   };
   saveTextFile(`multiview-settings-${Date.now()}.json`, JSON.stringify(backup, null, 2), 'application/json');
 });
 
 $('#importSettingsBtn').addEventListener('click', ()=> $('#importFileInput').click());
+// 백업에 같이 넣는 테마·화면 설정 항목
+const UI_KEYS = ['mvm_addmode','mvm_theme','mvm_cols','mvm_fitw','mvm_fith','mvm_peeklines','mvm_chatonlylines','mvm_blur','mvm_chatpoll','mvm_chatpeek','mvm_notify','mvm_chatnotify','mvm_panelH','mvm_termsH'];
 // 설정 백업 JSON 적용 (파일 선택 / 앱 업데이트 후 자동 복원 공용)
 function applyBackupText(text){
   try{
@@ -2088,6 +2131,11 @@ function applyBackupText(text){
     if(data.subs){ subs = data.subs; saveSubs(); renderSubs(); }
     if(data.terms){ searchTerms = data.terms; saveTerms(); renderTerms(); }
     if(data.presets){ savePresets(data.presets); renderPresets(); }
+    if(data.ui && typeof data.ui==='object'){
+      UI_KEYS.forEach(k=>{ if(data.ui[k]!=null) localStorage.setItem(k, data.ui[k]); });
+      log('테마·화면 설정도 복원했어요 — 잠시 후 화면을 새로 고쳐요');
+      setTimeout(()=> location.reload(), 1200);
+    }
     if(Array.isArray(data.chatTerms)){ chatTerms = data.chatTerms; saveChatTerms(); }
     else if(Array.isArray(data.keywords) || Array.isArray(data.alertUsers)){   // 예전 백업 파일
       (data.keywords||[]).forEach(t=>{ if(!chatTerms.some(v=>v.t===t && v.type==='msg')) chatTerms.push({t, type:'msg', alarm:true}); });
