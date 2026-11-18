@@ -113,6 +113,16 @@
     border-radius:20px; padding:6px 12px; font-size:11.5px; font-weight:600; cursor:pointer;
   }
   #checkAllBtn:active{ border-color:var(--signal); color:var(--signal); }
+  /* 새로고침 옆 빠른 설정 (설정탭과 같은 값) */
+  .qbtn{background:var(--panel2); border:1px solid var(--line); color:var(--muted); border-radius:20px; padding:6px 11px; font-size:11.5px; font-weight:600; cursor:pointer;}
+  .qbtn.on{color:var(--signal); border-color:var(--signal); background:color-mix(in srgb, var(--signal) 12%, transparent);}
+  .qctl{display:inline-flex; align-items:center; gap:4px; font-size:11.5px; font-weight:600; color:var(--muted); white-space:nowrap;}
+  .qctl select{padding:4px 4px; font-size:11.5px;}
+  html[data-theme="trade"] .qbtn{border-radius:5px; padding:6px 10px;}
+  html.is-phone #topbar{gap:6px 6px;}
+  html.is-phone .qbtn{padding:6px 9px;}
+  html.is-phone .qctl{gap:3px;}
+  html.is-phone .qctl select{padding:4px 2px;}
   /* 자동 크기: 정보칸 한 줄 유지 / 작아지면 그래프·영상제목·두번째 줄 숨김 */
   #grid.fit .info .statusbar .srow{flex-wrap:nowrap; overflow:hidden; white-space:nowrap;}
   #grid.fit.tiny .info .pulse, #grid.fit.tiny .info .videoline, #grid.fit.tiny .info .statusbar .srow + .srow{display:none;}
@@ -394,6 +404,10 @@
       <button id="broadcastModeBtn">🔴 방송모드</button>
       <button id="checkAllBtn" title="등록된 채널 라이브 여부 전부 확인">📡 전체 확인</button>
       <button id="refreshVideosBtn" title="영상만 새로고침 (등록 목록은 그대로 유지)">🔄 새로고침</button>
+      <span class="qctl"><label for="qCols">열개수</label><select id="qCols"></select></span>
+      <button class="qbtn" id="qFitW" title="가로 자동 크기">가로</button>
+      <button class="qbtn" id="qFitH" title="세로 자동 크기">세로</button>
+      <span class="qctl"><label for="qMon">오프확인</label><select id="qMon" title="오프라인 채널 확인 주기"></select></span>
       <button id="unmuteAllBtn" style="display:none" title="유튜브로 열어서 꺼둔 소리를 다시 켜기">🔇 소리 꺼짐 · 켜기</button>
       <div class="addbox">
         <select id="addMode" title="추가 방식" style="flex:0 0 auto; max-width:46%;">
@@ -2068,6 +2082,23 @@ $('#monitorIntervalSelect').addEventListener('change', e=>{
     log(`채널 자동감지 ${monitorIntervalMin}분 주기로 시작`);
   }
 });
+
+// ---- 새로고침 옆 빠른 설정: 설정탭 값과 항상 같이 움직임 ----
+$('#qCols').innerHTML = $('#colSelect').innerHTML;
+$('#qMon').innerHTML = $('#monitorIntervalSelect').innerHTML;
+function syncQuick(){
+  $('#qCols').value = $('#colSelect').value;
+  $('#qMon').value = $('#monitorIntervalSelect').value;
+  $('#qFitW').classList.toggle('on', fitW);
+  $('#qFitH').classList.toggle('on', fitH);
+}
+$('#qCols').addEventListener('change', ()=>{ $('#colSelect').value=$('#qCols').value; $('#colSelect').dispatchEvent(new Event('change')); });
+$('#qMon').addEventListener('change', ()=>{ $('#monitorIntervalSelect').value=$('#qMon').value; $('#monitorIntervalSelect').dispatchEvent(new Event('change')); });
+$('#qFitW').addEventListener('click', ()=> $('#fitWToggle').click());
+$('#qFitH').addEventListener('click', ()=> $('#fitHToggle').click());
+['#colSelect','#monitorIntervalSelect'].forEach(q=> $(q).addEventListener('change', syncQuick));
+['#fitWToggle','#fitHToggle'].forEach(q=> $(q).addEventListener('click', syncQuick));
+syncQuick();
 
 // end-detection + 시청자/구독자 갱신: 각 영상의 watch 페이지를 읽음 (API 키 없음)
 async function checkEnded(){
