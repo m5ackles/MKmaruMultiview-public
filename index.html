@@ -149,6 +149,9 @@
   input[type=range]{accent-color:var(--signal); width:120px;}
   .tile.chatOnly .chatPeek{display:flex; flex-direction:column; justify-content:flex-end; top:0;
     padding:6px 42px 8px 8px; font-size:11.5px; background:rgba(0,0,0,.25);}
+  .tile.chatOnly .chatPeek > div{flex-shrink:0;}   /* 줄이 많아도 줄이 찌그러져 안 보이는 일 없게 (넘치는 옛 채팅은 위로 잘림) */
+  #grid.noblur .tile.chatOnly .vwrap{filter:none; transform:none;}   /* 블러 0 = 영상 그대로 */
+  #grid.noblur .tile.chatOnly .chatPeek{background:transparent;}
   .tile.chatOnly .chatPeek .wait{color:#aab3bd; font-size:11px;}
   .chatPeek div{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .chatPeek .a{color:#9fc2e7; font-weight:600; margin-right:5px;}
@@ -523,6 +526,11 @@
               <option value="3">3줄</option>
               <option value="4">4줄</option>
               <option value="5">5줄</option>
+              <option value="6">6줄</option>
+              <option value="8">8줄</option>
+              <option value="10">10줄</option>
+              <option value="12">12줄</option>
+              <option value="15">15줄</option>
             </select>
           </div>
           <div class="row">
@@ -535,6 +543,8 @@
               <option value="8">8줄</option>
               <option value="10">10줄</option>
               <option value="12">12줄</option>
+              <option value="15">15줄</option>
+              <option value="20">20줄</option>
             </select>
           </div>
           <div class="row">
@@ -1008,8 +1018,8 @@ grid.addEventListener('pointerdown', e=>{
 
 // ---- 확대 화면 채팅 미리보기 ----
 let chatPeekOn = localStorage.getItem('mvm_chatpeek')!=='0';
-let peekLines = Math.min(5, Math.max(2, parseInt(localStorage.getItem('mvm_peeklines')) || 4));
-let chatOnlyLines = Math.min(12, Math.max(3, parseInt(localStorage.getItem('mvm_chatonlylines')) || 6));
+let peekLines = Math.min(15, Math.max(2, parseInt(localStorage.getItem('mvm_peeklines')) || 4));
+let chatOnlyLines = Math.min(20, Math.max(3, parseInt(localStorage.getItem('mvm_chatonlylines')) || 6));
 function chatPeekHTML(ch){
   const lines = (ch.recentChat||[]).slice(-(ch.chatOnly ? chatOnlyLines : peekLines)).map(m=>
     `<div class="${m.hit?'hit':''}"><span class="a">${esc(m.a)}</span>${esc(m.m)}</div>`).join('');
@@ -1021,14 +1031,20 @@ function toggleChatOnly(ch){
   ch.chatOnly = !ch.chatOnly;
   const t = grid.querySelector(`.tile[data-id="${ch.id}"]`);
   if(t) t.classList.toggle('chatOnly', !!ch.chatOnly);
+  // 채팅 연결이 끊겨 있으면(3번 실패 후 포기한 경우 포함) 다시 연결
+  if(ch.chatOnly && !ch.liveChatId && !ch._reconn){
+    ch._reconn = true; ch._retry = 0;
+    Promise.resolve(initChatTracking(ch)).finally(()=>{ ch._reconn = false; updateChatPeek(ch); });
+  }
   applyAudio(); updateChatPeeks(); updateInfoPanels();
 }
-function updateChatPeeks(){
-  channels.forEach(ch=>{
+function updateChatPeek(ch){
+  try{
     const el = grid.querySelector(`.tile[data-id="${ch.id}"] .chatPeek`);
     if(el){ el.classList.toggle('on', chatPeekOn && !ch.peekOff); el.innerHTML = chatPeekHTML(ch); }
-  });
+  }catch(e){}   // 한 화면 오류가 다른 화면 채팅 표시를 막지 않게
 }
+function updateChatPeeks(){ channels.forEach(updateChatPeek); }
 
 // ---- 급증/키워드 순간 바로가기 링크 (방송 시작 기준 몇 초 지점, 20초 앞부터) ----
 function momentUrl(ch, t){
@@ -1219,7 +1235,7 @@ setInterval(saveRecords, 15000);
 // 채팅만 보기 블러 세기 (0~20, 기본 8)
 let blurPx = parseInt(localStorage.getItem('mvm_blur'));
 if(isNaN(blurPx)) blurPx = 8;
-function applyBlur(){ grid.style.setProperty('--blur', blurPx + 'px'); $('#blurVal').textContent = blurPx; }
+function applyBlur(){ grid.style.setProperty('--blur', blurPx + 'px'); grid.classList.toggle('noblur', blurPx===0); $('#blurVal').textContent = blurPx; }
 $('#blurRange').value = String(blurPx);
 $('#blurRange').addEventListener('input', e=>{ blurPx = parseInt(e.target.value) || 0; applyBlur(); localStorage.setItem('mvm_blur', String(blurPx)); });
 applyBlur();
@@ -1604,7 +1620,7 @@ function renderGrid(){
   empty.style.order = 9999999;
   empty.textContent='+ 화면 추가';
   empty.addEventListener('click', ()=> $('#addInput').focus());
-  grid.appendChild(empty);
+  if(Native.has || channels.length===0) grid.appendChild(empty);   // PC: 화면이 있으면 '화면 추가'칸 숨김
   applyAutoFit();
 }
 
@@ -1640,7 +1656,7 @@ function applyAutoFit(){
 
   const H = stage.clientHeight - 28 - $('#topbar').offsetHeight - 10; // 위아래 여백 + 상단바 + 간격
   if(W<=0 || H<=0) return;
-  const cells = channels.reduce((n,c)=> n + ((c.enlarged && cols>1)?4:1), 0) + 1; // +1 = "화면 추가"칸
+  const cells = channels.reduce((n,c)=> n + ((c.enlarged && cols>1)?4:1), 0) + ((Native.has || channels.length===0) ? 1 : 0); // +1 = "화면 추가"칸 (PC는 화면 있으면 없음)
   const rows = Math.max(1, Math.ceil(cells/cols));
   // 정보칸 높이는 폭에 따라 달라지므로 몇 번 재면서 맞춤
   for(let pass=0; pass<4; pass++){
@@ -1724,7 +1740,8 @@ async function pollChat(ch){
     });
     const firstFetch = !ch.lastTs;   // 처음 받은 묶음은 지난 채팅이라 알림은 건너뜀
     if(!firstFetch) checkAlerts(ch, msgs);
-    ch.recentChat = (ch.recentChat||[]).concat(msgs).slice(-30);
+    ch.recentChat = (ch.recentChat||[]).concat(msgs).slice(-40);
+    updateChatPeek(ch);   // 받자마자 바로 표시
     const now = Date.now();
     const elapsedMin = ch.lastTs ? (now-ch.lastTs)/60000 : 1;
     const ratePerMin = ch.lastTs ? Math.round(count/Math.max(elapsedMin,0.2)) : 0;
