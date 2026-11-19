@@ -141,14 +141,15 @@
   @keyframes kwflash{50%{box-shadow:0 0 0 2px var(--kwLine), 0 0 24px -2px var(--kwLine);}}
   /* 확대 화면 채팅 미리보기 */
   .chatPeek{position:absolute; left:0; right:0; bottom:0; z-index:3; pointer-events:none; display:none;
-    padding:18px 44px 8px 10px; font-size:12px; line-height:1.4; color:#fff;
-    background:linear-gradient(transparent, rgba(0,0,0,.78) 40%); text-shadow:0 1px 2px #000;}
+    padding:18px 44px 8px 10px; font-size:var(--peekFont,12px); line-height:1.4; color:#fff;
+    background:linear-gradient(transparent, rgba(0,0,0,.78) 40%);
+    text-shadow:0 0 2px #000, 0 0 2px #000, 1px 1px 3px rgba(0,0,0,.9);}   /* 글자 테두리 그림자 → 밝은 영상 위에서도 잘 보임 */
   .cell.enlarged .chatPeek.on{display:block;}
   /* 채팅만 보기: 영상은 흐리게(알아볼 정도만), 채팅은 화면 전체에 */
   .tile.chatOnly .vwrap{filter:blur(var(--blur,8px)) brightness(.45) saturate(.6); transform:scale(1.08); pointer-events:none;}
   input[type=range]{accent-color:var(--signal); width:120px;}
   .tile.chatOnly .chatPeek{display:flex; flex-direction:column; justify-content:flex-end; top:0;
-    padding:6px 42px 8px 8px; font-size:11.5px; background:rgba(0,0,0,.25);}
+    padding:6px 42px 8px 8px; font-size:var(--chatOnlyFont,12px); background:rgba(0,0,0,.25);}
   .tile.chatOnly .chatPeek > div{flex-shrink:0;}   /* 줄이 많아도 줄이 찌그러져 안 보이는 일 없게 (넘치는 옛 채팅은 위로 잘림) */
   #grid.noblur .tile.chatOnly .vwrap{filter:none; transform:none;}   /* 블러 0 = 영상 그대로 */
   #grid.noblur .tile.chatOnly .chatPeek{background:transparent;}
@@ -551,6 +552,16 @@
             <label>채팅만 보기 블러 세기<br><span class="small">왼쪽 = 선명하게, 오른쪽 = 더 흐리게</span></label>
             <input type="range" id="blurRange" min="0" max="20" step="1">
             <span class="small mono" id="blurVal" style="width:22px; text-align:right;"></span>
+          </div>
+          <div class="row">
+            <label>채팅 미리보기 글자 크기<br><span class="small">확대 화면 아래 채팅</span></label>
+            <input type="range" id="peekFontRange" min="9" max="24" step="1">
+            <span class="small mono" id="peekFontVal" style="width:22px; text-align:right;"></span>
+          </div>
+          <div class="row">
+            <label>채팅만 보기 글자 크기<br><span class="small">블러 위에 나오는 채팅</span></label>
+            <input type="range" id="chatOnlyFontRange" min="9" max="24" step="1">
+            <span class="small mono" id="chatOnlyFontVal" style="width:22px; text-align:right;"></span>
           </div>
           <div class="row">
             <label>알림 (급증 · 키워드 · 사용자)<br><span class="small">폰 상단 알림 / PC 바탕화면 알림 + 진동</span></label>
@@ -1018,8 +1029,8 @@ grid.addEventListener('pointerdown', e=>{
 
 // ---- 확대 화면 채팅 미리보기 ----
 let chatPeekOn = localStorage.getItem('mvm_chatpeek')!=='0';
-let peekLines = Math.min(15, Math.max(2, parseInt(localStorage.getItem('mvm_peeklines')) || 4));
-let chatOnlyLines = Math.min(20, Math.max(3, parseInt(localStorage.getItem('mvm_chatonlylines')) || 6));
+let peekLines = Math.min(15, Math.max(2, parseInt(localStorage.getItem('mvm_peeklines')) || 5));
+let chatOnlyLines = Math.min(20, Math.max(3, parseInt(localStorage.getItem('mvm_chatonlylines')) || 4));
 function chatPeekHTML(ch){
   const lines = (ch.recentChat||[]).slice(-(ch.chatOnly ? chatOnlyLines : peekLines)).map(m=>
     `<div class="${m.hit?'hit':''}"><span class="a">${esc(m.a)}</span>${esc(m.m)}</div>`).join('');
@@ -1237,17 +1248,24 @@ let blurPx = parseInt(localStorage.getItem('mvm_blur'));
 if(isNaN(blurPx)) blurPx = 8;
 function applyBlur(){ grid.style.setProperty('--blur', blurPx + 'px'); grid.classList.toggle('noblur', blurPx===0); $('#blurVal').textContent = blurPx; }
 $('#blurRange').value = String(blurPx);
+// 채팅 글자 크기 (미리보기 / 채팅만 보기 따로)
+[['peekFont','mvm_peekfont',12],['chatOnlyFont','mvm_chatonlyfont',12]].forEach(([k,key,def])=>{
+  let v = parseInt(localStorage.getItem(key)); if(isNaN(v)) v = def;
+  const set = ()=>{ grid.style.setProperty('--'+k, v+'px'); $('#'+k+'Val').textContent = v; };
+  $('#'+k+'Range').value = String(v); set();
+  $('#'+k+'Range').addEventListener('input', e=>{ v = parseInt(e.target.value)||def; set(); localStorage.setItem(key, String(v)); });
+});
 $('#blurRange').addEventListener('input', e=>{ blurPx = parseInt(e.target.value) || 0; applyBlur(); localStorage.setItem('mvm_blur', String(blurPx)); });
 applyBlur();
 $('#chatOnlyLinesSelect').value = String(chatOnlyLines);
 $('#chatOnlyLinesSelect').addEventListener('change', e=>{
-  chatOnlyLines = parseInt(e.target.value) || 6;
+  chatOnlyLines = parseInt(e.target.value) || 4;
   localStorage.setItem('mvm_chatonlylines', String(chatOnlyLines));
   updateChatPeeks();
 });
 $('#peekLinesSelect').value = String(peekLines);
 $('#peekLinesSelect').addEventListener('change', e=>{
-  peekLines = parseInt(e.target.value) || 4;
+  peekLines = parseInt(e.target.value) || 5;
   localStorage.setItem('mvm_peeklines', String(peekLines));
   updateChatPeeks();
 });
@@ -2174,7 +2192,7 @@ $('#exportSettingsBtn').addEventListener('click', ()=>{
 
 $('#importSettingsBtn').addEventListener('click', ()=> $('#importFileInput').click());
 // 백업에 같이 넣는 테마·화면 설정 항목
-const UI_KEYS = ['mvm_addmode','mvm_theme','mvm_cols','mvm_fitw','mvm_fith','mvm_peeklines','mvm_chatonlylines','mvm_blur','mvm_chatpoll','mvm_chatpeek','mvm_notify','mvm_chatnotify','mvm_panelH','mvm_termsH'];
+const UI_KEYS = ['mvm_addmode','mvm_theme','mvm_cols','mvm_fitw','mvm_fith','mvm_peeklines','mvm_chatonlylines','mvm_blur','mvm_peekfont','mvm_chatonlyfont','mvm_chatpoll','mvm_chatpeek','mvm_notify','mvm_chatnotify','mvm_panelH','mvm_termsH'];
 // 설정 백업 JSON 적용 (파일 선택 / 앱 업데이트 후 자동 복원 공용)
 function applyBackupText(text){
   try{
